@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Vendored agent modules** re-pinned to abap2UI5/mcp-server a4d9f07 (PR
+  #44): viewxml, snapshot and appclient follow the protocol's frontend rules
+  there too; this frontend's own session already did and is unchanged.
 - **The URL hash** (`src/core/router.js`, spec/navigation.md): the `ROUTER`
   system action applied once per response after rendering - `KEEP` routes
   `#/app/<CLASS>/<DRAFT>` and `FRESH` routes `#/app/<CLASS>` that follow every

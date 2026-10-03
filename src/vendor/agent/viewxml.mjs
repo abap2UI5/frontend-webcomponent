@@ -1,6 +1,6 @@
 /*
  * VENDORED - do not edit. abap2UI5/mcp-server lib/viewxml.mjs
- * at commit ea4e9fa8f6eaeca8f9c975a1c4fbd532c44ff76c, copied unchanged by scripts/vendor-agent.mjs
+ * at commit a4d9f07659cd8a18d2e1f8ee4d2121695f40702b, copied unchanged by scripts/vendor-agent.mjs
  * (`npm run vendor`); `npm run vendor:check` and test/unit/vendor.test.mjs
  * fail when this copy drifts. Change it upstream, then re-vendor.
  */

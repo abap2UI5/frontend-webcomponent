@@ -1,9 +1,9 @@
 {
   "repository": "abap2UI5/mcp-server",
-  "commit": "ea4e9fa8f6eaeca8f9c975a1c4fbd532c44ff76c",
+  "commit": "a4d9f07659cd8a18d2e1f8ee4d2121695f40702b",
   "files": {
-    "src/vendor/agent/viewxml.mjs": "07c6aa56b169e4cab2d42d03b1d1545972ab5bfc2859eaec50d559d98b2385b6",
-    "src/vendor/agent/snapshot.mjs": "0183c57f23d3e96ea88de2182d9eb5c6e00f38f29f7c9a4d25a2b24a0f9d2f22",
-    "src/vendor/agent/appclient.mjs": "a70d16e8e937775ebe1d1f66a9f99423865b129584cc7f0d92f2ef31aea3bcc8"
+    "src/vendor/agent/viewxml.mjs": "fa4471246f12c78b52ddfe7122ccf15ab48a4d5b85f9a1aaef66f5a481f71c78",
+    "src/vendor/agent/snapshot.mjs": "f71df3b9a412546cb432332c7475e9a158dd14d48f1446c8d6af0b5f446129a8",
+    "src/vendor/agent/appclient.mjs": "7406c44fff5c9946e8db6acdabd6d8b8504e1712302428c6184316b958a23c5f"
   }
 }
