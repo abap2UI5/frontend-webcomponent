@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>abap2UI5</title>
+  <!-- the abap2UI5 service this page talks to; ?endpoint=... overrides it -->
+  <meta name="abap2ui5-endpoint" content="/sap/bc/z2ui5/">
+  <style>
+    html, body { margin: 0; height: 100%; background: var(--sapBackgroundColor, #f5f6f7); }
+    abap2ui5-app { height: 100vh; }
+  </style>
+  <script type="module">
+    import './abap2ui5-wc.js';
+    // the standalone start, like the UI5 SPA's: ?app_start=<CLASS> (default: the framework's hello world)
+    const url = new URL(location.href);
+    const el = document.createElement('abap2ui5-app');
+    el.setAttribute('endpoint', url.searchParams.get('endpoint') || document.querySelector('meta[name=abap2ui5-endpoint]').content);
+    el.setAttribute('app', url.searchParams.get('app_start') || 'Z2UI5_CL_UI5_APP_HI_WORLD');
+    const rest = new URLSearchParams(url.search);
+    for (const k of ['app_start', 'endpoint', 'sap-theme']) rest.delete(k);
+    if ([...rest].length) el.setAttribute('params', rest.toString());
+    if (url.searchParams.get('sap-theme')) el.setAttribute('theme', url.searchParams.get('sap-theme'));
+    el.setAttribute('standalone', '');
+    document.body.appendChild(el);
+  </script>
+</head>
+<body></body>
+</html>

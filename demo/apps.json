@@ -1,0 +1,19 @@
+{
+  "note": "The demo apps: real sample classes of abap2UI5/samples, vendored unchanged into demo/abap by scripts/vendor-samples.mjs. `covers` names what each one exercises in this frontend; test/e2e/apps.spec.mjs drives every one of them.",
+  "classes": [
+    { "class": "Z2UI5_CL_SMP_APP_493", "title": "Hello World", "covers": "Shell, Page, MessageStrip, Title" },
+    { "class": "Z2UI5_CL_SMP_APP_494", "title": "Data binding: Input and Button", "covers": "two-way binding, model delta, MessageBox" },
+    { "class": "Z2UI5_CL_SMP_APP_381", "title": "MessageToast via the global object", "covers": "Panel, SimpleForm, Select, CheckBox, eF frontend action, toast" },
+    { "class": "Z2UI5_CL_SMP_APP_382", "title": "MessageBox types", "covers": "TextArea, OverflowToolbar footer, MessageBox types and actions" },
+    { "class": "Z2UI5_CL_SMP_APP_011", "title": "Table: editable cells, add and delete", "covers": "Table, ColumnListItem, MultiSelect selection binding, cell inputs" },
+    { "class": "Z2UI5_CL_SMP_APP_019", "title": "Table: selection modes", "covers": "SegmentedButton selectedKey, Table modes, selection read in ABAP" },
+    { "class": "Z2UI5_CL_SMP_APP_048", "title": "List: StandardListItem and events", "covers": "List, StandardListItem, ${ROW} event args, selectionChange" },
+    { "class": "Z2UI5_CL_SMP_APP_012", "uses": ["Z2UI5_CL_SMP_APP_020"], "title": "Popup: ways to open a dialog", "covers": "POPUP slot, Dialog buttons, popup apps via nav_app_call" },
+    { "class": "Z2UI5_CL_SMP_APP_026", "title": "Popover with placement", "covers": "POPOVER slot, opener by id, popover input + footer" },
+    { "class": "Z2UI5_CL_SMP_APP_024", "uses": ["Z2UI5_CL_SMP_APP_025"], "title": "Navigation: call and leave apps", "covers": "nav_app_call / nav_app_leave, back button" },
+    { "class": "Z2UI5_CL_SMP_APP_445", "title": "Device model", "covers": "device> named model, expression bindings, IconTabBar, ObjectStatus, popup close" },
+    { "class": "Z2UI5_CL_SMP_APP_125", "title": "Set the tab title", "covers": "SET_TITLE frontend action" },
+    { "class": "Z2UI5_CL_SMP_APP_027", "title": "Expression binding, types and composite parts", "covers": "expression bindings, typed bindings, composite parts" },
+    { "class": "Z2UI5_CL_SMP_APP_453", "title": "ObjectStatus and ObjectNumber", "covers": "ObjectNumber, ObjectStatus with icon and state" }
+  ]
+}
