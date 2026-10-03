@@ -6,6 +6,9 @@
  *   start(app)        POST { S_FRONT: { ORIGIN, PATHNAME, SEARCH: '?app_start=<CLASS>' } }
  *   fire(slot, ...)   an eB wire: { S_FRONT: { ID, EVENT, T_EVENT_ARG }, MODEL: <delta> }
  *   closeSlot(slot)   the frontend-only popup/popover close (no roundtrip)
+ *   restore(hash)     the app-start-shaped request of a route the URL now
+ *                     names (browser Back/Forward under hash routing): no ID,
+ *                     the location, CONFIG and the new HASH
  *
  * Each response is folded into the state by the vendored applyResponse
  * (snapshot.mjs): which slot (MAIN, NEST, NEST2, POPUP, POPOVER) holds which
@@ -19,18 +22,38 @@
  * of another APP. The client follows S_FRONT.APP and keeps the stack of app
  * names it saw for diagnostics (`appStack`).
  *
- * The renderer subscribes with onResponse(fn): fn({ state, changed, custom,
- * response }) after every adopted response - `changed` lists the slots whose
- * view must be (re)built, `custom` the T_CUSTOM follow-up actions to run
- * once the DOM exists.
+ * The renderer subscribes with on('response', fn): fn({ state, changed,
+ * custom, routerOptions, appChanged, response }) after every adopted
+ * response - `changed` lists the slots whose view must be (re)built,
+ * `custom` the T_CUSTOM follow-up actions to run once the DOM exists,
+ * `routerOptions` the options of the ROUTER system action ({} without one)
+ * for the URL sync (core/router.js).
+ *
+ * A failed roundtrip (non-2xx) is a ProtocolError whose message is the
+ * response body VERBATIM (httpErrorText - spec/errors.md: never stripped or
+ * decoded; `HTTP <status>` when the body is empty); the UI shows it as text.
  */
 import { applyResponse, emptyState, modelKeyOf } from '../vendor/agent/snapshot.mjs';
-import { buildDelta, errorText } from '../vendor/agent/appclient.mjs';
+import { buildDelta } from '../vendor/agent/appclient.mjs';
 import { Model, createDeviceModel } from '../bindings/model.js';
 
 export const PROTOCOL = 2;
 const MODEL_KEYS = ['MAIN', 'POPUP', 'POPOVER'];
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
+
+/* the longest error body shown (spec/errors.md: a frontend MAY shorten a long body) */
+export const ERROR_TEXT_MAX = 64 * 1024;
+
+/**
+ * The text of a non-2xx answer (spec/errors.md): the body VERBATIM - never
+ * stripped, decoded or otherwise read as markup; the status when the body
+ * is empty. The caller shows it as text (textContent), never as HTML.
+ */
+export function httpErrorText(status, body) {
+  const s = body === undefined || body === null ? '' : String(body);
+  if (!s.trim()) return `HTTP ${status}`;
+  return s.length > ERROR_TEXT_MAX ? `${s.slice(0, ERROR_TEXT_MAX)}\n... (${s.length - ERROR_TEXT_MAX} more characters)` : s;
+}
 
 export class ProtocolError extends Error {
   constructor(message, { status, retry } = {}) {
@@ -47,12 +70,15 @@ export class Session {
    * @param {{ roundtrip: Function, endSession?: Function }} o.transport
    * @param {(app: string) => { origin, pathname, search, hash? }} o.location
    * @param {Window} [o.window]  for the device model
-   * @param {boolean} [o.sendHash] send the page hash with every request (standalone page)
+   * @param {Function} [o.hash]   () => '#...' | undefined - the hash every request carries as S_FRONT.HASH
+   *                                (the router's; an embedded element sends none)
+   * @param {boolean} [o.sendHash] shorthand for hash = the page's location.hash
    */
-  constructor({ transport, location, window: win, sendHash = false } = {}) {
+  constructor({ transport, location, window: win, hash, sendHash = false } = {}) {
     this.transport = transport;
     this.location = location;
-    this.sendHash = sendHash;
+    this.hashOf = hash || (sendHash ? () => (globalThis.location && globalThis.location.hash) || undefined : () => undefined);
+    this.app = null;
     this.state = emptyState();
     this.models = Object.fromEntries(MODEL_KEYS.map((k) => [k, new Model(k)]));
     this.namedModels = { device: createDeviceModel(win) };
@@ -92,13 +118,9 @@ export class Session {
 
   /** Start an app (the first roundtrip). */
   async start(app) {
-    const where = await this.location(app);
-    const front = { ORIGIN: where.origin, PATHNAME: where.pathname, SEARCH: where.search };
-    if (where.hash) front.HASH = where.hash;
-    // the session block on the app start (spec/request.md, CONFIG): the
-    // device as S_DEVICE; no S_UI5 - there is no UI5 runtime here
-    const device = this.deviceBlock();
-    if (device) front.CONFIG = { S_DEVICE: device };
+    this.app = app;
+    this.queued = null;
+    const front = await this.startFront(app);
     this.state = emptyState();
     for (const m of Object.values(this.models)) {
       m.edited.clear();
@@ -108,11 +130,37 @@ export class Session {
   }
 
   /**
+   * An app-start-shaped request for a route the URL now names (browser
+   * Back/Forward under hash routing, spec/navigation.md "Routes"): no ID,
+   * the location, the full CONFIG and the new HASH - the backend restores
+   * the draft the route names. The screen stays until the answer replaces
+   * it; unsent edits belong to the screen being left and are dropped.
+   */
+  async restore(hash) {
+    this.queued = null;
+    const front = await this.startFront(this.app, hash);
+    for (const m of Object.values(this.models)) m.edited.clear();
+    return this.send({ S_FRONT: front }, null);
+  }
+
+  async startFront(app, hash) {
+    const where = await this.location(app);
+    const front = { ORIGIN: where.origin, PATHNAME: where.pathname, SEARCH: where.search };
+    const h = hash !== undefined ? hash : (where.hash !== undefined ? where.hash : this.hashOf());
+    if (h) front.HASH = h;
+    // the session block on the app start (spec/request.md, CONFIG): the
+    // device as S_DEVICE; no S_UI5 - there is no UI5 runtime here
+    const device = this.deviceBlock();
+    if (device) front.CONFIG = { S_DEVICE: device };
+    return front;
+  }
+
+  /**
    * Fire an eB wire from a view in `slot`.
    * @param {string} slot   MAIN | NEST | NEST2 | POPUP | POPOVER
    * @param {string} event  the event name
    * @param {Array} args    the computed T_EVENT_ARG
-   * @param {object} [flags] { useMainModel, queueLast, noBusy }
+   * @param {object} [flags] { useMainModel, queueLast, noBusy, hash }
    */
   async fire(slot, event, args = [], flags = {}) {
     if (this.busy) {
@@ -123,7 +171,8 @@ export class Session {
     const model = this.models[key];
     const body = { S_FRONT: { ID: this.state.id, EVENT: event } };
     if (args && args.length) body.S_FRONT.T_EVENT_ARG = args;
-    if (this.sendHash && globalThis.location && globalThis.location.hash) body.S_FRONT.HASH = globalThis.location.hash;
+    const hash = flags.hash !== undefined ? flags.hash : this.hashOf();
+    if (hash) body.S_FRONT.HASH = hash;
     let sent = null;
     if (model.edited.size) {
       sent = new Map(model.edited);
@@ -171,7 +220,7 @@ export class Session {
       } catch (e) {
         throw new ProtocolError(`Network error: ${(e && e.message) || e}`, { retry: true });
       }
-      if (!res.ok) throw new ProtocolError(errorText(res.status, res.body), { status: res.status, retry: res.status >= 502 });
+      if (!res.ok) throw new ProtocolError(httpErrorText(res.status, res.body), { status: res.status, retry: res.status >= 502 });
       let json;
       try {
         json = JSON.parse(res.body);
@@ -236,7 +285,10 @@ export class Session {
     const custom = next.custom || [];
     const router = (response.S_FRONT.S_ACTION && response.S_FRONT.S_ACTION.T_SYSTEM || [])
       .filter((a) => Array.isArray(a) && a[0] === 'ROUTER');
-    this.emit('response', { state: next, changed, custom, router, response });
+    // the ROUTER action's options (one per response, spec/navigation.md);
+    // {} without one - the URL follows the new draft id either way
+    const routerOptions = Object.assign({}, ...router.map((a) => (a[2] && typeof a[2] === 'object' ? a[2] : {})));
+    this.emit('response', { state: next, changed, custom, router, routerOptions, appChanged: !!(next.app && next.app !== prev.app && prev.app), response });
   }
 
   end() {

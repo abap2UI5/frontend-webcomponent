@@ -8,10 +8,18 @@
  *                 display's options name (`id`); v1.1 of the profile
  *   POPUP         the fragment's ui5-dialog, opened on display, closed on destroy
  *   POPOVER       the fragment's ui5-popover, opened at the `openById` control
+ *
+ * The URL hash belongs to the router (core/router.js): standalone (or
+ * routing="hash") it reads and writes the page's hash and the hash travels
+ * with every request; embedded (routing="events", the default) the host's
+ * URL is never touched - every hash the app would write is an
+ * `abap2ui5-route` event, and the host hands a hash change of its own back
+ * through navigate(hash); with routing="off" the ROUTER action is ignored.
  */
 import { Session } from '../core/session.js';
 import { createActions } from '../core/actions.js';
 import { createFetchTransport } from '../core/transport.js';
+import { Router, pageUrl, eventUrl } from '../core/router.js';
 import { Renderer } from '../render/renderer.js';
 import registry from '../render/registry.js';
 import '../render/controls/index.js';
@@ -32,6 +40,9 @@ export class FrontendApp {
    * @param {string} [o.csrf]
    * @param {object} [o.headers]
    * @param {boolean} [o.standalone]         the page is ours: hash, document title
+   * @param {string} [o.routing]             the URL hash: 'hash' (read and write the page's hash - the
+   *                                         default standalone), 'events' (never touch the host's URL,
+   *                                         emit abap2ui5-route instead - the default embedded), 'off'
    * @param {string} [o.search]              extra start parameters (`&a=b`)
    * @param {boolean} [o.diagnostics]        show the diagnostics panel
    */
@@ -50,15 +61,18 @@ export class FrontendApp {
       headers: o.headers,
     });
     this.endpointPath = new URL(o.endpoint, this.win.location.href).pathname;
+    this.routing = ['hash', 'events', 'off'].includes(o.routing) ? o.routing : (o.standalone ? 'hash' : 'events');
+    this.router = this.createRouter();
     this.session = new Session({
       transport,
       window: this.win,
-      sendHash: !!o.standalone,
+      // the hash travels with every request only when the URL is ours
+      // (spec/navigation.md: an embedded frontend sends no HASH)
+      hash: this.routing === 'hash' ? () => this.router.requestHash() : undefined,
       location: (app) => ({
         origin: this.win.location.origin,
         pathname: o.standalone ? this.win.location.pathname : this.endpointPath,
         search: `?app_start=${encodeURIComponent(app)}${o.search ? `&${String(o.search).replace(/^[?&]/, '')}` : ''}`,
-        hash: o.standalone && this.win.location.hash ? this.win.location.hash : undefined,
       }),
     });
     this.renderer = new Renderer({
@@ -74,7 +88,10 @@ export class FrontendApp {
       report: (d) => this.report(d),
     });
     this.session.on('response', (r) => this.onResponse(r));
-    this.session.on('busy', ({ busy, silent }) => this.setBusy(busy, silent));
+    this.session.on('busy', ({ busy, silent }) => {
+      this.setBusy(busy, silent);
+      if (!busy && this.router) queueMicrotask(() => this.router && this.router.idle());
+    });
     this.session.on('error', (e) => this.showError(e));
     this.session.on('request', (body) => this.emit('abap2ui5-request', { body }));
   }
@@ -99,8 +116,43 @@ export class FrontendApp {
     this.diagEl.className = 'a2u-diagnostics';
     this.diagEl.hidden = true;
     this.diagEl.innerHTML = '<summary></summary><ul></ul>';
-    this.rootEl.append(this.mainEl, this.overlayEl, this.busyEl, this.diagEl);
+    // INVISIBLE_MESSAGE: what a screen reader announces, nothing visible
+    this.liveEl = d.createElement('div');
+    this.liveEl.className = 'a2u-live';
+    this.liveEl.setAttribute('aria-live', 'polite');
+    this.liveEl.setAttribute('role', 'status');
+    this.rootEl.append(this.mainEl, this.overlayEl, this.busyEl, this.diagEl, this.liveEl);
     this.o.root.append(style, this.rootEl);
+  }
+
+  /* The router of the URL hash (core/router.js), or null with routing 'off'. */
+  createRouter() {
+    if (this.routing === 'off') return null;
+    const url = this.routing === 'hash'
+      ? pageUrl(this.win)
+      : eventUrl((d) => this.emit('abap2ui5-route', { ...d, app: this.session ? this.session.state.app : null, id: this.session ? this.session.state.id : null }));
+    const router = new Router({
+      url,
+      isBusy: () => !!(this.session && this.session.busy),
+      report: (d) => this.report(d),
+      // a route that names another app state: the app-start-shaped restore
+      navigate: (hash) => {
+        this.actions.cancelTimers();
+        this.session.restore(hash).catch(() => router.restoreFailed());
+      },
+      // app-owned routing: the registered event; embedded, the host's hash
+      // rides along only on this request the host's own change caused
+      raise: (event, hash) => this.fire('MAIN', event, [], this.routing === 'events' ? { hash: hash || undefined } : {}),
+    });
+    router.start();
+    return router;
+  }
+
+  /** A hash change the host reports (embedded, routing 'events') - or a hash to go to. */
+  navigate(hash) {
+    if (!this.router) return;
+    if (this.router.url.set) this.router.url.set(hash);
+    else this.win.location.hash = String(hash || '').replace(/^#?/, '#');
   }
 
   emit(type, detail) {
@@ -121,6 +173,7 @@ export class FrontendApp {
 
   destroy() {
     this.actions.cancelTimers();
+    if (this.router) this.router.stop();
     this.clearSlots();
     this.session.end();
   }
@@ -145,13 +198,19 @@ export class FrontendApp {
     return this.session.fire(slot, event, args, flags).catch(() => {});
   }
 
-  onResponse({ state, changed, custom, local }) {
+  onResponse({ state, changed, custom, local, routerOptions, appChanged }) {
     for (const slot of ['MAIN', 'NEST', 'NEST2', 'POPUP', 'POPOVER']) {
       if (!changed.includes(slot)) continue;
       if (state.slots[slot]) this.renderSlot(slot, state.slots[slot]);
       else this.removeSlot(slot);
     }
     if (!local) {
+      // the URL follows what was just built - once per response, before the
+      // follow-up actions (a HASH_BACK among them steps from there)
+      if (this.router) {
+        if (appChanged) this.router.appChanged();
+        this.router.sync(routerOptions || {}, { id: state.id, app: state.app });
+      }
       for (const item of custom) this.actions.run(item, 'MAIN');
       this.emit('abap2ui5-response', { app: state.app, id: state.id, slots: Object.keys(state.slots) });
     }
@@ -274,10 +333,22 @@ export class FrontendApp {
         return undefined;
       },
       busy: (show) => this.setBusy(show, false),
+      announce: (text, mode) => {
+        this.liveEl.setAttribute('aria-live', mode === 'Assertive' ? 'assertive' : 'polite');
+        this.liveEl.textContent = '';
+        requestAnimationFrame(() => { this.liveEl.textContent = text; });
+      },
       theme: (name) => this.setTheme(name),
       openUrl: (url, target) => this.win.open(url, target, target === '_blank' ? 'noopener' : undefined),
       navigate: (url) => { this.win.location.href = url; },
-      back: () => this.win.history.back(),
+      route: (options) => {
+        if (this.router) this.router.sync(options, { id: this.session.state.id, app: this.session.state.app });
+        else this.report({ kind: 'action', detail: `${Object.keys(options)[0]}: routing is off` });
+      },
+      back: (fallback) => {
+        if (this.router) this.router.back(fallback);
+        else this.report({ kind: 'action', detail: 'HASH_BACK: routing is off' });
+      },
     };
   }
 
@@ -354,6 +425,13 @@ export class FrontendApp {
     dlg.className = 'a2u-error';
     dlg.setAttribute('header-text', 'App Terminated');
     dlg.setAttribute('state', 'Negative');
+    if (e.status && e.message !== `HTTP ${e.status}`) {
+      const status = d.createElement('div');
+      status.className = 'a2u-error-status';
+      status.textContent = `HTTP ${e.status}`;
+      dlg.appendChild(status);
+    }
+    // the body verbatim, as TEXT (spec/errors.md) - never innerHTML
     const pre = d.createElement('pre');
     pre.className = 'a2u-error-text';
     pre.textContent = e.message;

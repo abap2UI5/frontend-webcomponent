@@ -48,6 +48,7 @@ import '@ui5/webcomponents/dist/TabSeparator.js';
 import '@ui5/webcomponents/dist/Table.js';
 import '@ui5/webcomponents/dist/TableCell.js';
 import '@ui5/webcomponents/dist/TableHeaderCell.js';
+import '@ui5/webcomponents/dist/TableGrowing.js';
 import '@ui5/webcomponents/dist/TableHeaderRow.js';
 import '@ui5/webcomponents/dist/TableRow.js';
 import '@ui5/webcomponents/dist/TableSelectionMulti.js';

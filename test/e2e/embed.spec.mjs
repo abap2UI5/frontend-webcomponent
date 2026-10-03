@@ -57,3 +57,39 @@ test('the standalone page passes extra URL parameters and reports a backend erro
   await expect(err).toHaveAttribute('header-text', /App Terminated|Error/);
   await expect(err.locator('.a2u-error-text')).not.toBeEmpty();
 });
+
+test('embedded: routing leaves the host URL alone, reports abap2ui5-route, the host navigates back', async ({ page }) => {
+  await page.route('**://cdn.jsdelivr.net/**', (r) => r.abort());
+  // a host page of its own (served by the test, same origin as the bundle)
+  await page.route('**/host-routing.html', (r) => r.fulfill({
+    contentType: 'text/html',
+    body: `<!doctype html><html><head><meta charset="utf-8"><script type="module" src="/abap2ui5-wc.js"></script>
+      <script>window.routes = []; document.addEventListener('abap2ui5-route', (e) => window.routes.push(e.detail));</script></head>
+      <body><abap2ui5-app id="app" endpoint="/sap/bc/z2ui5/" app="Z2UI5_CL_SMP_APP_480" style="height:600px"></abap2ui5-app></body></html>`,
+  }));
+  const startReq = page.waitForRequest((r) => r.method() === 'POST');
+  await page.goto('/host-routing.html#host-route');
+  const start = JSON.parse((await startReq).postData()).value;
+  expect(start.S_FRONT.HASH).toBeUndefined();
+  const app = page.locator('#app');
+  await expect(app.locator('[data-ui5-control="sap.m.Input"]')).toBeAttached();
+  await expect(app.locator('.a2u-root')).toHaveAttribute('data-roundtrip', 'idle');
+  const routes = () => page.evaluate(() => window.routes);
+  await expect.poll(async () => (await routes()).length).toBe(1);
+  const [first] = await routes();
+  expect(first).toMatchObject({ action: 'replace', app: 'Z2UI5_CL_SMP_APP_480' });
+  expect(first.hash).toMatch(/^#\/app\/Z2UI5_CL_SMP_APP_480\/\w+$/);
+  const call = await roundtrip(page, () => app.locator('ui5-button').filter({ hasText: 'go to the detail page' }).click());
+  expect(call.request.S_FRONT.HASH).toBeUndefined();
+  await expect(app.locator('.a2u-main')).toHaveAttribute('data-app', 'Z2UI5_CL_SMP_APP_469');
+  const all = await routes();
+  expect(all.at(-1)).toMatchObject({ action: 'push', hash: `#/app/Z2UI5_CL_SMP_APP_469/${call.response.S_FRONT.ID}` });
+  // the host's URL never changed
+  expect(await page.evaluate(() => location.hash)).toBe('#host-route');
+  // the host's own Back: it hands the entry it recorded back to the element
+  const callerHash = all.at(-2).hash;
+  const back = await roundtrip(page, () => page.evaluate((h) => document.getElementById('app').navigate(h), callerHash));
+  expect(back.request.S_FRONT.ID).toBeUndefined();
+  expect(back.request.S_FRONT.HASH).toBe(callerHash);
+  await expect(app.locator('.a2u-main')).toHaveAttribute('data-app', 'Z2UI5_CL_SMP_APP_480');
+});

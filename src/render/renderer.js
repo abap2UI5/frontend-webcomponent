@@ -420,8 +420,12 @@ export class Renderer {
         for (const name of on) target.addEventListener(name, handler);
       },
 
-      /** Render the controls of one aggregation (bound or static) and hand them to `mount`. */
-      aggregation(node, name, mount, { groups, c = ctx, template } = {}) {
+      /**
+       * Render the controls of one aggregation (bound or static) and hand them to `mount`.
+       * `growing` ({ threshold, onChange(total, shown) }) renders the first `threshold`
+       * rows of a bound aggregation; growing.more() renders `threshold` more.
+       */
+      aggregation(node, name, mount, { groups, c = ctx, template, growing } = {}) {
         const g = groups || r.groups(node, r.registry.get(control));
         const children = g.get(name) || [];
         const bindingRaw = node.attrs[name];
@@ -441,8 +445,20 @@ export class Renderer {
         let current = [];
         let scope = null;
         let signature = null;
+        if (growing) {
+          growing.shown = growing.threshold;
+          growing.more = () => {
+            growing.shown += growing.threshold;
+            build();
+          };
+        }
         const build = () => {
-          const { rows } = aggregationRows(agg, c);
+          let { rows } = aggregationRows(agg, c);
+          if (growing) {
+            const total = rows.length;
+            rows = rows.slice(0, growing.shown);
+            if (growing.onChange) growing.onChange(total, rows.length);
+          }
           const sig = rows.map((x) => x.path).join('|');
           if (sig === signature) return;
           signature = sig;

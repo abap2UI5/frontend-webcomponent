@@ -404,3 +404,77 @@ test.describe('Z2UI5_CL_SMP_APP_453 ObjectStatus / ObjectNumber', () => {
     expect(wc.severe()).toEqual([]);
   });
 });
+
+/* the URL hash of the standalone page (core/router.js, spec/navigation.md) */
+const hashOf = (page) => page.evaluate(() => location.hash);
+
+test.describe('Z2UI5_CL_SMP_APP_480 hash routing (KEEP)', () => {
+  test('route per draft, nav_app_call pushes, browser Back restores the caller with its edits', async ({ wc, ui5 }) => {
+    await wc.open('Z2UI5_CL_SMP_APP_480');
+    const start = wc.rec.last;
+    const routerOf = (res) => (res.S_FRONT.S_ACTION.T_SYSTEM || []).find((a) => a[0] === 'ROUTER');
+    expect(routerOf(start.response)[2].setNavRouting).toBe('KEEP');
+    await expect.poll(() => hashOf(wc.page)).toBe(`#/app/Z2UI5_CL_SMP_APP_480/${start.response.S_FRONT.ID}`);
+    await wc.fill(wc.control('sap.m.Input'), 'state A');
+    const inc = await wc.press('increment (0)');
+    // every request carries the hash; the route follows the new draft id
+    expect(inc.request.S_FRONT.HASH).toBe(`#/app/Z2UI5_CL_SMP_APP_480/${start.response.S_FRONT.ID}`);
+    await expect.poll(() => hashOf(wc.page)).toBe(`#/app/Z2UI5_CL_SMP_APP_480/${inc.response.S_FRONT.ID}`);
+    const historyBefore = await wc.page.evaluate(() => history.length);
+    const call = await wc.press('go to the detail page (nav_app_call)');
+    const opts = routerOf(call.response)[2];
+    expect(opts.checkNavAppCall).toBe(true);
+    await expect(wc.main()).toHaveAttribute('data-app', 'Z2UI5_CL_SMP_APP_469');
+    await expect.poll(() => hashOf(wc.page)).toBe(`#/app/Z2UI5_CL_SMP_APP_469/${call.response.S_FRONT.ID}`);
+    expect(await wc.page.evaluate(() => history.length)).toBe(historyBefore + 1);
+    // the BROWSER Back button: an app-start-shaped restore of the caller's route
+    const back = await roundtrip(wc.page, () => wc.page.goBack({ waitUntil: 'commit' }));
+    expect(back.request.S_FRONT.ID).toBeUndefined();
+    expect(back.request.S_FRONT.HASH).toBe(`#/app/${opts.navAppCallPrevApp}/${opts.navAppCallPrevId}`);
+    expect(back.request.S_FRONT.SEARCH).toBe('?app_start=Z2UI5_CL_SMP_APP_480');
+    expect(back.response.S_FRONT.APP).toBe('Z2UI5_CL_SMP_APP_480');
+    await expect(wc.main()).toHaveAttribute('data-app', 'Z2UI5_CL_SMP_APP_480');
+    await expect(wc.control('sap.m.Input')).toHaveJSProperty('value', 'state A');
+    await expect(wc.button('increment (1)')).toBeVisible();
+    // the answer to Back keeps the history entries: Forward goes to the detail page again
+    await expect.poll(() => hashOf(wc.page)).toBe(`#/app/${opts.navAppCallPrevApp}/${opts.navAppCallPrevId}`);
+    const fwd = await roundtrip(wc.page, () => wc.page.goForward({ waitUntil: 'commit' }));
+    expect(fwd.request.S_FRONT.HASH).toBe(`#/app/Z2UI5_CL_SMP_APP_469/${call.response.S_FRONT.ID}`);
+    await expect(wc.main()).toHaveAttribute('data-app', 'Z2UI5_CL_SMP_APP_469');
+    expect(wc.severe()).toEqual([]);
+
+    if (!CROSS) return;
+    // the UI5 SPA sends the same restore for the same Back
+    await ui5.open('Z2UI5_CL_SMP_APP_480');
+    await ui5.setBound('sap.m.Input', '/INPUT', 'state A');
+    await ui5.press('increment (0)');
+    const ucall = await ui5.press('go to the detail page (nav_app_call)');
+    const uopts = routerOf(ucall.response)[2];
+    const uback = await roundtrip(ui5.page, () => ui5.page.goBack({ waitUntil: 'commit' }));
+    expect(uback.request.S_FRONT.ID).toBeUndefined();
+    expect(uback.request.S_FRONT.HASH).toBe(`#/app/${uopts.navAppCallPrevApp}/${uopts.navAppCallPrevId}`);
+    expect(uback.response.MODEL).toEqual(back.response.MODEL);
+    expect(ui5.rec.events()).toEqual(wc.rec.events().slice(0, 2));
+  });
+});
+
+test.describe('Z2UI5_CL_SMP_APP_498 app state in the URL', () => {
+  test('the hash names the current draft, a reload restores it, switched off it goes', async ({ wc }) => {
+    await wc.open('Z2UI5_CL_SMP_APP_498');
+    await expect.poll(() => hashOf(wc.page)).toBe(`#/z2ui5-xapp-state=${wc.rec.last.response.S_FRONT.ID}`);
+    await wc.fill(wc.control('sap.m.Input').first(), '42');
+    const post = await wc.press('post');
+    expect(post.request.MODEL).toMatchObject({ QUANTITY: '42' });
+    await expect.poll(() => hashOf(wc.page)).toBe(`#/z2ui5-xapp-state=${post.response.S_FRONT.ID}`);
+    // a reload (or a bookmark) restores exactly that state
+    const reload = await roundtrip(wc.page, () => wc.page.reload());
+    expect(reload.request.S_FRONT.HASH).toBe(`#/z2ui5-xapp-state=${post.response.S_FRONT.ID}`);
+    await expect(wc.control('sap.m.Input').first()).toHaveJSProperty('value', '42');
+    await wc.idle();
+    // switched off: the URL stops following the state
+    const off = await roundtrip(wc.page, () => wc.control('sap.m.Switch').click());
+    expect(off.request.S_FRONT.EVENT).toBe('TOGGLE_STATE');
+    await expect.poll(() => hashOf(wc.page)).toBe('');
+    expect(wc.severe()).toEqual([]);
+  });
+});

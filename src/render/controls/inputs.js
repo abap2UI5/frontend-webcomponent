@@ -8,6 +8,7 @@
  * value. The event wires fire after the write.
  */
 import { define } from '../registry.js';
+import { formatDatePattern } from '../../bindings/types.js';
 import {
   enabled, editable, valueState, valueStateText, text, iconName, VALUE_STATE,
 } from './common.js';
@@ -339,6 +340,45 @@ define('sap.m.MultiComboBox', {
   read: { selectedKeys: (el) => [...el.children].filter((o) => o.selected).map((o) => o.dataset.key) },
 });
 
+/*
+ * `dateValue`, `minDate`, `maxDate`: JS Dates in UI5 - from one of the
+ * profile's frontend formatters (Formatter.DateAbapDateToDateObject, ...),
+ * as the JSON model has no Date. Written as strings in the picker's
+ * valueFormat (`fallback` when the view sets none; `dateValue` then sets
+ * that format on the picker). One-way, as a formatter binding is in UI5.
+ */
+const asDate = (v) => {
+  const d = v instanceof Date ? v : (v ? new Date(v) : null);
+  return d && !Number.isNaN(d.getTime()) ? d : null;
+};
+const valueFormatOf = (api) => {
+  const raw = api.node.attrs.valueFormat;
+  return raw !== undefined ? api.evaluate(raw) : '';
+};
+const dateValue = (fallback) => ({
+  set(el, v, api) {
+    const d = asDate(v);
+    if (!d) {
+      el.value = '';
+      return;
+    }
+    let pattern = valueFormatOf(api);
+    if (!pattern) {
+      pattern = fallback;
+      el.setAttribute('value-format', pattern);
+    }
+    el.value = formatDatePattern(d, pattern);
+  },
+});
+const dateLimit = (attr, fallback) => ({
+  set(el, v, api) {
+    if (v === undefined || v === null || v === '') return el.removeAttribute(attr);
+    const d = v instanceof Date ? asDate(v) : null;
+    if (v instanceof Date && !d) return el.removeAttribute(attr);
+    return el.setAttribute(attr, d ? formatDatePattern(d, valueFormatOf(api) || fallback) : String(v));
+  },
+});
+
 const dateProps = {
   value: { prop: 'value', convert: str, twoWay: { event: 'change', read: (el) => el.value } },
   valueFormat: { attr: 'value-format' },
@@ -350,9 +390,9 @@ const dateProps = {
   valueStateText,
   width: { style: 'width' },
   required: { attr: 'required', bool: true },
-  minDate: 'ignore',
-  maxDate: 'ignore',
-  dateValue: 'ignore',
+  minDate: dateLimit('min-date', 'yyyy-MM-dd'),
+  maxDate: dateLimit('max-date', 'yyyy-MM-dd'),
+  dateValue: dateValue('yyyy-MM-dd'),
   showFooter: 'ignore',
   name: { attr: 'name' },
   hideInput: 'ignore',
@@ -365,10 +405,10 @@ const dateEvents = {
   change: { on: 'change', params: (ev, el) => ({ value: el.value, valid: ev.detail ? ev.detail.valid !== false : true }) },
   liveChange: { on: 'input', params: (ev, el) => ({ value: el.value }) },
 };
-define('sap.m.DatePicker', { tag: 'ui5-date-picker', props: dateProps, events: dateEvents, read: { value: (el) => el.value }, status: 'basic', note: 'value/valueFormat/displayFormat; no dateValue (a Date object has no JSON wire form)' });
+define('sap.m.DatePicker', { tag: 'ui5-date-picker', props: dateProps, events: dateEvents, read: { value: (el) => el.value }, status: 'basic', note: 'value (two-way), valueFormat, displayFormat, minDate/maxDate; dateValue one-way (from a frontend formatter)' });
 define('sap.m.DateRangeSelection', {
   tag: 'ui5-daterange-picker',
-  props: { ...dateProps, delimiter: { attr: 'delimiter' } },
+  props: { ...dateProps, dateValue: 'ignore', delimiter: { attr: 'delimiter' } },
   events: dateEvents,
   read: { value: (el) => el.value },
   status: 'basic',
@@ -376,12 +416,24 @@ define('sap.m.DateRangeSelection', {
 });
 define('sap.m.TimePicker', {
   tag: 'ui5-time-picker',
-  props: { ...dateProps, valueFormat: { attr: 'value-format' }, displayFormat: { attr: 'display-format' } },
+  props: { ...dateProps, minDate: 'ignore', maxDate: 'ignore', dateValue: dateValue('HH:mm:ss') },
   events: dateEvents,
   read: { value: (el) => el.value },
   status: 'basic',
 });
-define('sap.m.DateTimePicker', { tag: 'ui5-datetime-picker', props: dateProps, events: dateEvents, read: { value: (el) => el.value }, status: 'basic', note: 'value/valueFormat/displayFormat; no dateValue' });
+define('sap.m.DateTimePicker', {
+  tag: 'ui5-datetime-picker',
+  props: {
+    ...dateProps,
+    dateValue: dateValue('yyyy-MM-dd HH:mm:ss'),
+    minDate: dateLimit('min-date', 'yyyy-MM-dd HH:mm:ss'),
+    maxDate: dateLimit('max-date', 'yyyy-MM-dd HH:mm:ss'),
+  },
+  events: dateEvents,
+  read: { value: (el) => el.value },
+  status: 'basic',
+  note: 'value (two-way), valueFormat, displayFormat, minDate/maxDate; dateValue one-way (from a frontend formatter)',
+});
 
 define('sap.m.StepInput', {
   tag: 'ui5-step-input',
