@@ -46,6 +46,8 @@ export function profileActions(profile) {
     }
   };
   collect(fa);
+  // revision 0.3 (protocol 604d267): actions.api - the same names, frontendActions kept beside it
+  if (profile && profile.actions) collect(profile.actions.api);
   const wire = new Set();
   const clientApi = [];
   for (const n of names) {

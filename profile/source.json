@@ -1,7 +1,7 @@
 {
   "repository": "abap2UI5/protocol",
   "path": "profiles/portable-v1.json",
-  "commit": "d1251093e3cbdd9a44ac1a29770a2c1add0ec46b",
-  "note": "copied unchanged by scripts/vendor-profile.mjs from origin/main; re-copy when the protocol repository changes the profile",
-  "sha256": "43bc84244aa27cd278973527c1dcadcc2d547d8cc22d494a38aca3113b3ab92c"
+  "commit": "604d26769a9b7dcaa1f985f1297ff9c0a59b012e",
+  "note": "copied unchanged by scripts/vendor-profile.mjs from 604d26769a9b7dcaa1f985f1297ff9c0a59b012e; re-copy when the protocol repository changes the profile",
+  "sha256": "abaa67bb19ee798efeee118a34b723e664afbab4985592bd8e7942206a9c1f39"
 }
