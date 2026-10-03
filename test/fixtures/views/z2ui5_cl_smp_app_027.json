@@ -1,0 +1,27 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_027",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\" xmlns:form=\"sap.ui.layout.form\"><Shell><Page title=\"abap2UI5 - Binding - Expression Binding, Types and Composite Parts\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"Advanced binding syntax: expression binding, typed bindings, conditional enabling with RegExp checks, and composite (parts) bindings.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><form:SimpleForm title=\"Binding Syntax\" editable=\"true\"><form:content><Title text=\"Expression Binding\"/><Label text=\"Documentation\"/><Link text=\"Expression Binding\" href=\"https://sdk.openui5.org/topic/daf6852a04b44d118963968a1239d2c0\" target=\"_blank\"/><Label text=\"input in uppercase\"/><Input value=\"{/INPUT2}\"/><Input enabled=\"false\" value=\"{= ${/INPUT2}.toUpperCase() }\"/><Label text=\"max value of the first two inputs\"/><Input value=\"{ type : &quot;sap.ui.model.type.Integer&quot;, path:&quot;/INPUT31&quot; }\"/><Input value=\"{ type : &quot;sap.ui.model.type.Integer&quot;, path:&quot;/INPUT32&quot; }\"/><Input enabled=\"false\" value=\"{= Math.max(${/INPUT31}, ${/INPUT32}) }\"/><Label text=\"only enabled when the quantity equals 500\"/><Input value=\"{ type : &quot;sap.ui.model.type.Integer&quot;, path:&quot;/QUANTITY&quot; }\"/><Input enabled=\"{= 500===${/QUANTITY} }\" value=\"{/PRODUCT}\"/><Label text=\"RegExp Set to enabled if the input contains VIP, ignoring the case.\"/><Input value=\"{/INPUT41}\"/><Button text=\"VIP\" enabled=\"{= RegExp('vip', 'i').test(${/INPUT41}) }\"/><Label text=\"concatenate both inputs\"/><Input value=\"{/INPUT51}\"/><Input value=\"{/INPUT52}\"/><Input enabled=\"false\" value=\"{ parts: [ &quot;/INPUT51&quot;, &quot;/INPUT52&quot; ] }\"/></form:content></form:SimpleForm></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "INPUT2": "",
+  "INPUT31": 0,
+  "INPUT32": 0,
+  "INPUT41": "faasdfdfsaVIp",
+  "INPUT51": "",
+  "INPUT52": "",
+  "PRODUCT": "tomato",
+  "QUANTITY": 500
+ }
+}

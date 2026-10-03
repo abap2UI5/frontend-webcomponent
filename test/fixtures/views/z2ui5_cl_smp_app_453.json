@@ -1,0 +1,75 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_453",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\"><Shell><Page title=\"abap2UI5 - Formatter - When Not to Use One: Compute in ABAP\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"Every column is bound to a plain model field. The state, the icon, the rounded price and the dimension string are computed in ABAP (products_prepare) - the frontend only renders. Z2UI5_CL_SMP_APP_450 shows what does belong in a formatter: the date conversion the backend physically cannot do.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><Table items=\"{/T_PRODUCTS}\" id=\"productTable\"><columns><Column><Text text=\"Product\"/></Column><Column><Text text=\"Weight (g)\"/></Column><Column><Text text=\"Price\"/></Column><Column><Text text=\"Dimensions\"/></Column><Column><Text text=\"Status\"/></Column><Column><Text text=\"Delivery\"/></Column></columns><items><ColumnListItem><cells><Text text=\"{NAME}\"/><ObjectNumber number=\"{WEIGHT}\" state=\"{WEIGHT_STATE}\" unit=\"g\"/><ObjectNumber number=\"{PRICE_DISP}\" unit=\"{CURRENCY}\"/><Text text=\"{DIMENSIONS}\"/><ObjectStatus icon=\"{STATUS_ICON}\" state=\"{STATUS_STATE}\" text=\"{STATUS}\"/><ObjectStatus state=\"{DELIVERY_STATE}\" text=\"{DELIVERY}\"/></cells></ColumnListItem></items></Table></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "T_PRODUCTS": [
+   {
+    "CURRENCY": "EUR",
+    "DELIVERY": "Shipped",
+    "DELIVERY_STATE": "Success",
+    "DEPTH": 21,
+    "DIMENSIONS": "30 x 21 x 3 cm",
+    "DIM_UNIT": "cm",
+    "HEIGHT": 3,
+    "NAME": "Comfort Easy",
+    "PRICE": 249.99,
+    "PRICE_DISP": "249.99",
+    "STATUS": "Available",
+    "STATUS_ICON": "sap-icon://accept",
+    "STATUS_STATE": "Success",
+    "WEIGHT": 650,
+    "WEIGHT_STATE": "Success",
+    "WIDTH": 30
+   },
+   {
+    "CURRENCY": "EUR",
+    "DELIVERY": "Failed Shipping",
+    "DELIVERY_STATE": "Error",
+    "DEPTH": 28,
+    "DIMENSIONS": "40 x 28 x 0 cm",
+    "DIM_UNIT": "cm",
+    "HEIGHT": 0,
+    "NAME": "Notebook Basic 15",
+    "PRICE": 956,
+    "PRICE_DISP": "956.00",
+    "STATUS": "Out of Stock",
+    "STATUS_ICON": "sap-icon://alert",
+    "STATUS_STATE": "Warning",
+    "WEIGHT": 1500,
+    "WEIGHT_STATE": "Warning",
+    "WIDTH": 40
+   },
+   {
+    "CURRENCY": "EUR",
+    "DELIVERY": "Pending",
+    "DELIVERY_STATE": "None",
+    "DEPTH": 46,
+    "DIMENSIONS": "54 x 46 x 8 cm",
+    "DIM_UNIT": "cm",
+    "HEIGHT": 8,
+    "NAME": "Ergo Screen E-I",
+    "PRICE": 230.5,
+    "PRICE_DISP": "230.50",
+    "STATUS": "Discontinued",
+    "STATUS_ICON": "sap-icon://decline",
+    "STATUS_STATE": "Error",
+    "WEIGHT": 2100,
+    "WEIGHT_STATE": "Error",
+    "WIDTH": 54
+   }
+  ]
+ }
+}

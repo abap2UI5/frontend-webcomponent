@@ -1,0 +1,17 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_012",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\" xmlns:form=\"sap.ui.layout.form\" xmlns:layout=\"sap.ui.layout\"><Shell><Page title=\"abap2UI5 - Popup - Ways to Open a Dialog\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"Shows different ways to open a popup - inside the same app or as a sub-app - and how the background view is kept, destroyed or re-rendered.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><layout:Grid defaultSpan=\"L7 M12 S12\"><layout:content><form:SimpleForm title=\"Popup in same App\" editable=\"true\"><form:content><Label text=\"Demo\"/><Button press=\".eB(['BUTTON_POPUP_01'])\" text=\"popup rendering, no background rendering\"/><Label text=\"Demo\"/><Button press=\".eB(['BUTTON_POPUP_02'])\" text=\"popup rendering, background destroyed and rerendering\"/><Label text=\"Demo\"/><Button press=\".eB(['BUTTON_POPUP_03'])\" text=\"popup, background unchanged (default) - close (no roundtrip)\"/><Label text=\"Demo\"/><Button press=\".eB(['BUTTON_POPUP_04'])\" text=\"popup, background unchanged (default) - close with server\"/></form:content></form:SimpleForm><form:SimpleForm title=\"Popup in new App\" editable=\"true\"><form:content><Label text=\"Demo\"/><Button press=\".eB(['BUTTON_POPUP_05'])\" text=\"popup rendering, no background\"/><Label text=\"Demo\"/><Button press=\".eB(['BUTTON_POPUP_06'])\" text=\"popup rendering, hold previous view\"/></form:content></form:SimpleForm></layout:content></layout:Grid></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ }
+}

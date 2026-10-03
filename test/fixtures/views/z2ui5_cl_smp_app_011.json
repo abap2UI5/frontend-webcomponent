@@ -1,0 +1,81 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_011",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\"><Shell><Page title=\"abap2UI5 - Table - Editable Cells, Add and Delete Rows\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\" id=\"test2\"><MessageStrip text=\"A MultiSelect table whose input cells switch between display and edit mode via the toolbar, which also adds new rows and deletes the currently selected ones.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><Table items=\"{path: '/T_TAB', templateShareable: false}\" mode=\"MultiSelect\"><headerToolbar><OverflowToolbar><Title text=\"title of the table\"/><Button press=\".eB(['BUTTON_TEST'])\" text=\"test\"/><ToolbarSpacer/><Button press=\".eB(['BUTTON_DELETE'])\" text=\"delete selected row\" icon=\"sap-icon://delete\"/><Button press=\".eB(['BUTTON_ADD'])\" text=\"add\" icon=\"sap-icon://add\"/><Button press=\".eB(['BUTTON_EDIT'])\" text=\"edit\" tooltip=\"Switch the cells between display and edit mode\" icon=\"sap-icon://edit\"/></OverflowToolbar></headerToolbar><columns><Column><Text text=\"Title\"/></Column><Column><Text text=\"Color\"/></Column><Column><Text text=\"Info\"/></Column><Column><Text text=\"Description\"/></Column><Column><Text text=\"Checkbox\"/></Column></columns><items><ColumnListItem selected=\"{SELKZ}\"><cells><Input id=\"test\" enabled=\"{EDITABLE}\" value=\"{TITLE}\"/><Input enabled=\"{EDITABLE}\" value=\"{VALUE}\"/><Input enabled=\"{EDITABLE}\" value=\"{INFO}\"/><Input enabled=\"{EDITABLE}\" value=\"{DESCR}\"/><CheckBox selected=\"{CHECKBOX}\" enabled=\"{EDITABLE}\"/></cells></ColumnListItem></items></Table></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "T_TAB": [
+   {
+    "CHECKBOX": true,
+    "DESCR": "this is a description",
+    "EDITABLE": false,
+    "ICON": "",
+    "INFO": "completed",
+    "SELKZ": false,
+    "TITLE": "entry 01",
+    "VALUE": "red"
+   },
+   {
+    "CHECKBOX": true,
+    "DESCR": "this is a description",
+    "EDITABLE": false,
+    "ICON": "",
+    "INFO": "completed",
+    "SELKZ": false,
+    "TITLE": "entry 02",
+    "VALUE": "blue"
+   },
+   {
+    "CHECKBOX": true,
+    "DESCR": "this is a description",
+    "EDITABLE": false,
+    "ICON": "",
+    "INFO": "completed",
+    "SELKZ": false,
+    "TITLE": "entry 03",
+    "VALUE": "green"
+   },
+   {
+    "CHECKBOX": true,
+    "DESCR": "",
+    "EDITABLE": false,
+    "ICON": "",
+    "INFO": "completed",
+    "SELKZ": false,
+    "TITLE": "entry 04",
+    "VALUE": "orange"
+   },
+   {
+    "CHECKBOX": true,
+    "DESCR": "this is a description",
+    "EDITABLE": false,
+    "ICON": "",
+    "INFO": "completed",
+    "SELKZ": false,
+    "TITLE": "entry 05",
+    "VALUE": "grey"
+   },
+   {
+    "CHECKBOX": false,
+    "DESCR": "",
+    "EDITABLE": false,
+    "ICON": "",
+    "INFO": "",
+    "SELKZ": false,
+    "TITLE": "",
+    "VALUE": ""
+   }
+  ]
+ }
+}

@@ -1,0 +1,7 @@
+{
+  "repository": "abap2UI5/protocol",
+  "path": "profiles/portable-v1.json",
+  "commit": "e8c64d7ef932ccc94022ca79591d2d349854948b",
+  "note": "portable profile v1 as drafted on the protocol branch claude/abap2ui5-project-brainstorm-nt7ifs; re-copy when the protocol repository publishes it",
+  "sha256": "43bc84244aa27cd278973527c1dcadcc2d547d8cc22d494a38aca3113b3ab92c"
+}

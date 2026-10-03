@@ -1,0 +1,17 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_493",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\"><Shell><Page title=\"abap2UI5 - Basics I - Hello World, the Smallest App\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"The whole app is what you see below: a class implementing z2ui5_if_app, one main( ) method, a view built as XML and handed to client-&gt;view_display( ). abap2UI5 calls main( ) on every roundtrip - here only the display matters, which is what check_on_navigated( ) asks: true on the first start and whenever the app is shown again. Copy this class as the starting point for your own app.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><Title text=\"Hello World\" class=\"sapUiSmallMargin\" level=\"H2\"/></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ }
+}

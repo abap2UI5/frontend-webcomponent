@@ -1,0 +1,21 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_024",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\" xmlns:form=\"sap.ui.layout.form\" xmlns:layout=\"sap.ui.layout\"><Shell><Page title=\"abap2UI5 - Navigation - Call and Leave Apps (nav_app_call)\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"App-to-app navigation: calls a second app in different ways - open a view, raise an event or pass data - and reads the input it returns.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><layout:Grid defaultSpan=\"L6 M12 S12\"><layout:content><form:SimpleForm title=\"Controller\" editable=\"true\"><form:content><Label text=\"Demo\"/><Button press=\".eB(['CALL_NEW_APP'])\" text=\"call new app (first View)\"/><Label text=\"Demo\"/><Button press=\".eB(['CALL_NEW_APP_VIEW'])\" text=\"call new app (second View)\"/><Label text=\"Demo\"/><Button press=\".eB(['CALL_NEW_APP_EVENT'])\" text=\"call new app (set Event)\"/><Label text=\"Demo\"/><Input value=\"{/INPUT}\"/><Button press=\".eB(['CALL_NEW_APP_READ'])\" text=\"call new app (set data)\"/><Label text=\"some data, you can read in the next app\"/><Input value=\"{/INPUT2}\"/></form:content></form:SimpleForm></layout:content></layout:Grid></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "INPUT": "",
+  "INPUT2": ""
+ }
+}

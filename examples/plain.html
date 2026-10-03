@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>abap2UI5 embedded - plain HTML</title>
+  <style>
+    body { margin: 0; font-family: system-ui, sans-serif; background: #eef1f4; }
+    header { padding: 1rem 1.5rem; background: #1d2d3e; color: #fff; }
+    main { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem; }
+    section { background: #fff; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+    section h2 { margin: 0; padding: 0.5rem 1rem; font-size: 1rem; border-bottom: 1px solid #ddd; }
+    abap2ui5-app { height: 520px; }
+    #log { grid-column: 1 / -1; font: 12px monospace; background: #fff; padding: 0.5rem 1rem; max-height: 10rem; overflow: auto; }
+  </style>
+  <!-- the bundle registers <abap2ui5-app>; nothing else is needed -->
+  <script type="module" src="../abap2ui5-wc.js"></script>
+</head>
+<body>
+  <header>A plain HTML page of its own - two abap2UI5 apps embedded side by side, each its own backend session</header>
+  <main>
+    <section>
+      <h2>Data binding (Z2UI5_CL_SMP_APP_494)</h2>
+      <abap2ui5-app id="left" endpoint="/sap/bc/z2ui5/" app="Z2UI5_CL_SMP_APP_494" diagnostics="off"></abap2ui5-app>
+    </section>
+    <section>
+      <h2>Editable table (Z2UI5_CL_SMP_APP_011)</h2>
+      <abap2ui5-app id="right" endpoint="/sap/bc/z2ui5/" app="Z2UI5_CL_SMP_APP_011" theme="sap_horizon_dark"></abap2ui5-app>
+    </section>
+    <pre id="log"></pre>
+  </main>
+  <script type="module">
+    // the host listens to what the embedded apps do
+    const log = document.getElementById('log');
+    for (const type of ['abap2ui5-response', 'abap2ui5-message', 'abap2ui5-title', 'abap2ui5-error']) {
+      document.addEventListener(type, (e) => {
+        log.textContent += `${e.target.id}: ${type} ${JSON.stringify(e.detail)}\n`;
+      });
+    }
+  </script>
+</body>
+</html>
