@@ -96,6 +96,8 @@ ui5-table-row[data-highlight=Information]{box-shadow:inset 0.25rem 0 var(--sapIn
 .a2u-unsupported-content{margin-top:0.5rem;color:var(--sapTextColor)}
 .a2u-busy{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(255,255,255,0.35);z-index:50}
 .a2u-root[data-busy=shown] .a2u-busy{display:flex}
+.a2u-error-status{font-size:var(--sapFontSmallSize);color:var(--sapContent_LabelColor);margin-bottom:0.5rem}
+.a2u-live{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 .a2u-error-text{white-space:pre-wrap;font-family:var(--sapFontFamily);max-height:50vh;overflow:auto;margin:0}
 .a2u-box-text{white-space:pre-wrap;max-width:40rem;display:block}
 .a2u-box-details{white-space:pre-wrap;margin-top:0.75rem;font-size:var(--sapFontSmallSize);max-height:40vh;overflow:auto;color:var(--sapContent_LabelColor)}

@@ -6,13 +6,18 @@
  * Supported here (the portable set):
  *   MESSAGE_TOAST show <text> [opts]          toast (onClose -> eB)
  *   MESSAGE_BOX <type> <text> [opts]          dialog (actions, onClose -> eB(action))
- *   CONTROL_GLOBAL MESSAGE_TOAST|MESSAGE_BOX|VIEW_SLOTS destroy|BUSY_INDICATOR|THEMING
+ *   CONTROL_GLOBAL MESSAGE_TOAST|MESSAGE_BOX|VIEW_SLOTS destroy|BUSY_INDICATOR|THEMING|INVISIBLE_MESSAGE announce
  *   SET_TITLE <title>                         document title (standalone) / title event
  *   OPEN_NEW_TAB <url>, LOCATION_RELOAD <url>, URLHELPER REDIRECT {URL}
  *   CLIPBOARD_COPY <text>
  *   START_TIMER <event> <ms> [noBusy]         one-shot eB after a delay
  *   SET_FOCUS <id> [start] [end]
- *   HASH_BACK                                 history.back()
+ *   HASH_BACK [fallback]                      one step back, or the fallback route (core/router.js)
+ *   SET_PUSH_STATE, HASH_REPLACE, HASH_ATTACH_CHANGED, SET_NAV_ROUTING,
+ *   SET_APP_STATE_ACTIVE                      the client-API names of the ROUTER options: a backend
+ *                                             folds them into the ROUTER system action, but as a
+ *                                             wired eF (or an older backend's follow-up) they are
+ *                                             handed to the router as the same options
  * Everything else is reported (diagnostics + console), never thrown.
  *
  * URLs follow the UI5 frontend's rules: OPEN_NEW_TAB and LOCATION_RELOAD only
@@ -42,7 +47,7 @@ export function isHttpUrl(url) {
 
 /**
  * @param {object} o
- * @param {object} o.ui        { toast, box, setTitle, focus, busy, theme, openUrl, navigate, back }
+ * @param {object} o.ui        { toast, box, setTitle, focus, busy, theme, openUrl, navigate, back, route, announce }
  * @param {Function} o.fire    (slot, event, args, flags) => Promise - an eB roundtrip
  * @param {Function} o.closeSlot (slot) => void
  * @param {Function} o.report  ({ kind: 'action', detail }) => void
@@ -89,6 +94,7 @@ export function createActions({ ui, fire, closeSlot, report }) {
       }
       if (target === 'VIEW_SLOTS' && method === 'destroy') return closeSlot(String(rest[0]));
       if (target === 'BUSY_INDICATOR') return ui.busy(method === 'show');
+      if (target === 'INVISIBLE_MESSAGE' && method === 'announce' && ui.announce) return ui.announce(toText(rest[0]), toText(rest[1]));
       if (target === 'THEMING' && method === 'setTheme') return ui.theme(String(rest[0]));
       return unsupported(`CONTROL_GLOBAL ${target}.${method}`);
     },
@@ -116,7 +122,14 @@ export function createActions({ ui, fire, closeSlot, report }) {
       }, Number(delay) || 0));
     },
     SET_FOCUS: (a) => ui.focus(String(a[1] || ''), a[2], a[3]),
-    HASH_BACK: () => ui.back(),
+    HASH_BACK: (a) => ui.back(a[1] === undefined || a[1] === null || a[1] === '' ? undefined : String(a[1])),
+    // the ROUTER options under their client-API names (spec/actions.md)
+    SET_PUSH_STATE: (a) => ui.route({ setPushState: toText(a[1]) }),
+    HASH_REPLACE: (a) => ui.route({ setHashReplace: toText(a[1]) }),
+    HASH_ATTACH_CHANGED: (a) => ui.route({ setHashEvent: toText(a[1]) || ' ' }),
+    SET_NAV_ROUTING: (a) => ui.route({ setNavRouting: toText(a[1]) || 'DEFAULT' }),
+    // no argument switches it on, a single blank off (the client API's encoding)
+    SET_APP_STATE_ACTIVE: (a) => ui.route({ setAppStateActive: a[1] !== ' ' }),
   });
 
   return {

@@ -12,6 +12,23 @@ import { define } from '../registry.js';
 import { VALUE_STATE, iconName, text } from './common.js';
 
 const META = Symbol.for('abap2ui5-wc.meta');
+/*
+ * growing / growingThreshold (default 20) / growingScrollToLoad /
+ * growingTriggerText: the first `threshold` rows of the bound items render,
+ * a "More" trigger (or scrolling) renders the next ones - all on the client,
+ * the model holds every row (UI5's JSON model does the same).
+ */
+function growingOf(node, api) {
+  const a = node.attrs;
+  if (a.growing === undefined || !api.toBool(api.evaluate(a.growing))) return null;
+  const n = a.growingThreshold !== undefined ? Number(api.evaluate(a.growingThreshold)) : 20;
+  return {
+    threshold: n > 0 ? Math.floor(n) : 20,
+    scroll: a.growingScrollToLoad !== undefined && api.toBool(api.evaluate(a.growingScrollToLoad)),
+    text: a.growingTriggerText !== undefined ? api.evaluate(a.growingTriggerText) : '',
+  };
+}
+
 const SELECT_MODE = {
   MultiSelect: 'multi', SingleSelect: 'single', SingleSelectLeft: 'single', SingleSelectMaster: 'single',
 };
@@ -59,13 +76,24 @@ define('sap.m.Table', {
     };
     table.__a2uSyncSelection = syncSelection;
 
+    const growing = growingOf(node, api);
+    if (growing) {
+      const more = api.el('ui5-table-growing', { slot: 'features', mode: growing.scroll ? 'Scroll' : 'Button' });
+      if (growing.text) more.setAttribute('text', growing.text);
+      more.addEventListener('load-more', () => growing.more());
+      growing.onChange = (total, shown) => {
+        if (total > shown) {
+          if (!more.parentElement) table.appendChild(more);
+        } else if (more.parentElement) more.remove();
+      };
+    }
     api.aggregation(node, 'items', (kids) => {
       kids.forEach((k, i) => {
         if (!k.getAttribute('row-key')) k.setAttribute('row-key', String(i));
         table.appendChild(k);
       });
       syncSelection();
-    }, { groups });
+    }, { groups, growing });
 
     if (feature) {
       feature.addEventListener('change', (ev) => {
@@ -103,7 +131,7 @@ define('sap.m.Table', {
   defaultAggregation: 'items',
   read: {},
   status: 'basic',
-  note: 'columns, items (bound or static), header toolbar, noDataText, MultiSelect/SingleSelect via the selected binding, itemPress, selectionChange; no growing (all rows render), no Delete mode, no grouping',
+  note: 'columns, items (bound or static), header toolbar, noDataText, MultiSelect/SingleSelect via the selected binding, itemPress, selectionChange, growing (threshold, trigger text, scroll to load); no Delete mode, no grouping',
 });
 
 define('sap.m.Column', {
@@ -187,7 +215,13 @@ define('sap.m.List', {
     if (a.mode !== undefined) api.bind(a.mode, (v) => el.setAttribute('selection-mode', LIST_MODE[v] || 'None'));
     if (a.inset !== undefined) api.bind(a.inset, (v) => el.classList.toggle('a2u-inset', api.toBool(v)));
     if (groups.has('headerToolbar')) api.aggregation(node, 'headerToolbar', (k) => k.forEach((x) => { x.setAttribute('slot', 'header'); el.appendChild(x); }), { groups });
-    api.aggregation(node, 'items', (kids) => kids.forEach((k) => el.appendChild(k)), { groups });
+    const growing = growingOf(node, api);
+    if (growing) {
+      if (growing.text) el.setAttribute('growing-button-text', growing.text);
+      el.addEventListener('load-more', () => growing.more());
+      growing.onChange = (total, shown) => el.setAttribute('growing', total > shown ? (growing.scroll ? 'Scroll' : 'Button') : 'None');
+    }
+    api.aggregation(node, 'items', (kids) => kids.forEach((k) => el.appendChild(k)), { groups, growing });
     // UI5 selects a SingleSelect(Master) item on any click; a web-component
     // item of type Detail/Inactive does not react to a click at all - so the
     // selection is made here and announced the way the list would
@@ -229,7 +263,7 @@ define('sap.m.List', {
   },
   defaultAggregation: 'items',
   status: 'basic',
-  note: 'items (bound or static), headerText, mode, itemPress, selectionChange, delete; no growing, no grouping',
+  note: 'items (bound or static), headerText, mode, itemPress, selectionChange, delete, growing (threshold, trigger text, scroll to load); no grouping',
 });
 
 const LI_TYPE = { Inactive: 'Inactive', Active: 'Active', Navigation: 'Navigation', Detail: 'Detail', DetailAndActive: 'Detail' };

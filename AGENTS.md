@@ -31,13 +31,13 @@ texts, documentation, and every text the frontend shows.
 
 | Path | |
 |---|---|
-| `src/core/` | the protocol client, DOM-free: `session.js` (start, fire, slots, delta, app stack), `transport.js` (fetch, `sap-contextid`, CSRF), `actions.js` (frontend actions) |
+| `src/core/` | the protocol client, DOM-free: `session.js` (start, fire, restore, slots, delta, app stack, the error body verbatim), `transport.js` (fetch, `sap-contextid`, CSRF), `router.js` (the URL hash: the `ROUTER` action, routes, app state, `HASH_BACK` - on the page's hash or as `abap2ui5-route` events when embedded), `actions.js` (frontend actions) |
 | `src/bindings/` | models, property/list bindings, the expression grammar, typed display formatting |
 | `src/render/` | the renderer, event-arg computation (`wires.js`), the control registry and one mapper per control in `controls/`, the web-component imports (`webcomponents.js` + `webcomponents-tags.js`) |
 | `src/ui/` | `app.js` (slots, popups, messages, busy, errors, diagnostics), `styles.js` |
 | `src/element.js`, `src/index.js` | `<abap2ui5-app>` and the ESM entry |
 | `src/vendor/agent/` | **vendored** viewxml/snapshot/appclient of abap2UI5/mcp-server - never edit |
-| `profile/portable-v1.json` | the profile's machine-readable control list, copied from the protocol repository (`profile/source.json`) |
+| `profile/portable-v1.json` | the profile's machine-readable control list, copied from the protocol repository by `scripts/vendor-profile.mjs` (`profile/source.json` records the commit); `scripts/profile-actions.mjs` reads its action list in either shape |
 | `demo/` | `apps.json` (the demo apps), `abap/` (**vendored** sample classes), `build-backend.mjs`, `server.mjs` |
 | `examples/` | embedding examples (`plain.html` is served and tested) |
 | `test/unit/` | node:test - pure modules, and the renderer on happy-dom over `test/fixtures/views/` |
@@ -63,7 +63,11 @@ texts, documentation, and every text the frontend shows.
   e2e cross-check against the UI5 SPA.
 - **Security:** view XML and models are backend data. No `eval` /
   `new Function`; `core:HTML` and FormattedText are sanitized; navigation
-  actions keep the UI5 frontend's URL rules (same origin, http(s) only).
+  actions keep the UI5 frontend's URL rules (same origin, http(s) only); an
+  error body is shown verbatim and only as text (`textContent`).
+- **The host's URL is the host's:** embedded (no `standalone`, no
+  `routing="hash"`) the element never reads or writes `location` and sends no
+  `HASH` - it emits `abap2ui5-route` instead.
 - **Keep the bundle lean:** import only the web components a mapper creates;
   report the size (`npm run build` prints it) when it changes notably.
 - The e2e tests run with **one worker** - one backend process, see README

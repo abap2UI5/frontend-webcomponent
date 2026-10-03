@@ -52,10 +52,33 @@ test('composite parts and currency', () => {
   assert.equal(c.get(ctxOf({ AMOUNT: 1234.5, CUR: 'EUR' })), `${new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(1234.5)} EUR`);
 });
 
-test('formatters are unsupported: placeholder and an issue', () => {
+test('formatters outside the profile: placeholder and an issue', () => {
   const b = compileProperty("{ path: '/X', formatter: '.myFormat' }");
   assert.equal(b.get(ctxOf({ X: 1 })), '[formatter .myFormat]');
   assert.deepEqual(b.issues, [{ kind: 'formatter', detail: '.myFormat' }]);
+  for (const ref of ['Formatter.expandInlineIcons', 'myFormatter.DateCreateObject', 'DateCreateObject']) {
+    assert.equal(compileProperty(`{ path: '/X', formatter: '${ref}' }`).issues[0].detail, ref);
+  }
+});
+
+test('the profile formatters: Formatter.Date* turn ABAP dates into Dates', () => {
+  const day = compileProperty("{ path: '/D', formatter: 'Formatter.DateAbapDateToDateObject' }");
+  assert.deepEqual(day.issues, []);
+  const d = day.get(ctxOf({ D: '20261003' }));
+  assert.ok(d instanceof Date);
+  assert.deepEqual([d.getFullYear(), d.getMonth(), d.getDate(), d.getHours()], [2026, 9, 3, 0]);
+  for (const none of ['00000000', '', '2026', '20260003', null]) assert.equal(day.get(ctxOf({ D: none })), null, `no date: ${none}`);
+  const dt = compileProperty("{ parts: ['/D', '/T'], formatter: 'Formatter.DateAbapDateTimeToDateObject' }");
+  const v = dt.get(ctxOf({ D: '20261003', T: '134501' }));
+  assert.deepEqual([v.getHours(), v.getMinutes(), v.getSeconds()], [13, 45, 1]);
+  assert.equal(dt.get(ctxOf({ D: '20261003', T: '' })).getHours(), 0);
+  const iso = compileProperty("{ path: '/S', formatter: 'Formatter.DateCreateObject' }");
+  assert.equal(iso.get(ctxOf({ S: '2026-10-03T10:00:00Z' })).toISOString(), '2026-10-03T10:00:00.000Z');
+  assert.equal(iso.get(ctxOf({ S: '' })), null);
+  assert.equal(iso.get(ctxOf({ S: 'no date' })), null);
+  // the module path as alias works too; a Date in a text shows as text
+  const alias = compileProperty("Day: { path: '/D', formatter: 'z2ui5/model/formatter.DateAbapDateToDateObject' }");
+  assert.match(alias.get(ctxOf({ D: '20261003' })), /^Day: Sat Oct 03 2026/);
 });
 
 test('expression bindings: profile grammar incl. Math.* and string methods', () => {

@@ -1,7 +1,7 @@
 /* The core protocol client: requests, delta, slots, transport, actions. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Session, PROTOCOL } from '../../src/core/session.js';
+import { Session, PROTOCOL, httpErrorText, ERROR_TEXT_MAX } from '../../src/core/session.js';
 import { createFetchTransport, isValidContextId } from '../../src/core/transport.js';
 import { createActions, isSameOriginUrl } from '../../src/core/actions.js';
 
@@ -89,9 +89,11 @@ test('closeSlot is local and drops the slot edits', async () => {
   assert.equal(t.sent.length, 1);
 });
 
-test('errors: HTTP status text, protocol mismatch, network', async () => {
+test('errors: the body verbatim, the status without one, protocol mismatch, network', async () => {
+  const body = 'Request failed in app <b>Z</b> &amp; <img src=x onerror=alert(1)>\nCX_SY_ZERODIVIDE';
   const t = scripted([
-    { ok: false, status: 500, body: '<html><pre>CX_SY_ZERODIVIDE\nDivision by zero</pre></html>' },
+    { ok: false, status: 500, body },
+    { ok: false, status: 503, body: '  ' },
     answer('X'),
     new Error('offline'),
   ]);
@@ -101,7 +103,11 @@ test('errors: HTTP status text, protocol mismatch, network', async () => {
     return r;
   })(t.roundtrip);
   const s = session(t);
-  await assert.rejects(s.start('Z'), /HTTP 500: CX_SY_ZERODIVIDE\nDivision by zero/);
+  // spec/errors.md: never stripped, decoded or interpreted - the text as it came
+  await assert.rejects(s.start('Z'), (e) => e.message === body && e.status === 500 && !e.retry);
+  await assert.rejects(s.start('Z'), (e) => e.message === 'HTTP 503' && e.retry);
+  assert.equal(httpErrorText(500, 'x'.repeat(ERROR_TEXT_MAX + 5)).length > ERROR_TEXT_MAX, true);
+  assert.match(httpErrorText(500, 'x'.repeat(ERROR_TEXT_MAX + 5)), /\(5 more characters\)$/);
   await assert.rejects(s.start('Z'), /Protocol mismatch/);
   await assert.rejects(s.start('Z'), (e) => e.retry && /Network error: offline/.test(e.message));
   assert.equal(s.busy, false);

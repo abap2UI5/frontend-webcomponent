@@ -14,6 +14,8 @@
     { "class": "Z2UI5_CL_SMP_APP_445", "title": "Device model", "covers": "device> named model, expression bindings, IconTabBar, ObjectStatus, popup close" },
     { "class": "Z2UI5_CL_SMP_APP_125", "title": "Set the tab title", "covers": "SET_TITLE frontend action" },
     { "class": "Z2UI5_CL_SMP_APP_027", "title": "Expression binding, types and composite parts", "covers": "expression bindings, typed bindings, composite parts" },
-    { "class": "Z2UI5_CL_SMP_APP_453", "title": "ObjectStatus and ObjectNumber", "covers": "ObjectNumber, ObjectStatus with icon and state" }
+    { "class": "Z2UI5_CL_SMP_APP_453", "title": "ObjectStatus and ObjectNumber", "covers": "ObjectNumber, ObjectStatus with icon and state" },
+    { "class": "Z2UI5_CL_SMP_APP_480", "uses": ["Z2UI5_CL_SMP_APP_469"], "title": "Hash routing (KEEP)", "covers": "ROUTER: #/app/<CLASS>/<DRAFT>, nav_app_call pushes a history entry, browser Back restores the caller's draft" },
+    { "class": "Z2UI5_CL_SMP_APP_498", "title": "App state in the URL", "covers": "ROUTER setAppStateActive: #/z2ui5-xapp-state=<DRAFT>, a reload restores the state" }
   ]
 }

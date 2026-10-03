@@ -133,6 +133,56 @@ test('Select: options from core:Item, selectedKey two-way', () => {
   assert.equal(models[''].data.K, 'a');
 });
 
+test('DatePicker: dateValue from a profile formatter becomes value in the valueFormat', () => {
+  const { render, models, reports } = setup({ D: '20261003', E: '00000000' });
+  const { host } = render(viewOf(`
+    <DatePicker dateValue="{ path: '/D', formatter: 'Formatter.DateAbapDateToDateObject' }" valueFormat="dd.MM.yyyy"/>
+    <DatePicker dateValue="{ path: '/D', formatter: 'Formatter.DateAbapDateToDateObject' }"
+                minDate="{ path: '/D', formatter: 'Formatter.DateAbapDateToDateObject' }"/>
+    <DatePicker dateValue="{ path: '/E', formatter: 'Formatter.DateAbapDateToDateObject' }"/>`));
+  const [a, b, c] = host.querySelectorAll('ui5-date-picker');
+  assert.equal(a.value, '03.10.2026');
+  assert.equal(b.value, '2026-10-03');
+  assert.equal(b.getAttribute('value-format'), 'yyyy-MM-dd');
+  assert.equal(b.getAttribute('min-date'), '2026-10-03');
+  assert.equal(c.value, '');
+  assert.deepEqual(reports.filter((x) => x.kind === 'formatter'), []);
+  models[''].set('/D', '20251224');
+  assert.equal(a.value, '24.12.2025');
+});
+
+test('growing: the first growingThreshold rows, More renders the next ones (Table and List)', () => {
+  const T = Array.from({ length: 7 }, (_, i) => ({ N: `row ${i}` }));
+  const { render, models } = setup({ T });
+  const { host } = render(viewOf(`
+    <Table items="{/T}" growing="true" growingThreshold="3" growingTriggerText="More rows">
+      <columns><Column><Text text="N"/></Column></columns>
+      <items><ColumnListItem><cells><Text text="{N}"/></cells></ColumnListItem></items>
+    </Table>
+    <List items="{/T}" growing="true" growingThreshold="5"><StandardListItem title="{N}"/></List>
+    <List items="{/T}"><StandardListItem title="{N}"/></List>`));
+  const table = host.querySelector('ui5-table');
+  const rows = () => table.querySelectorAll('ui5-table-row').length;
+  const more = () => table.querySelector('ui5-table-growing');
+  assert.equal(rows(), 3);
+  assert.equal(more().getAttribute('text'), 'More rows');
+  more().dispatchEvent(new CustomEvent('load-more'));
+  assert.equal(rows(), 6);
+  more().dispatchEvent(new CustomEvent('load-more'));
+  assert.equal(rows(), 7);
+  assert.equal(more(), null, 'all rows shown: no trigger');
+  const [list, plain] = host.querySelectorAll('ui5-list');
+  assert.equal(list.querySelectorAll('ui5-li').length, 5);
+  assert.equal(list.getAttribute('growing'), 'Button');
+  list.dispatchEvent(new CustomEvent('load-more'));
+  assert.equal(list.querySelectorAll('ui5-li').length, 7);
+  assert.equal(list.getAttribute('growing'), 'None');
+  assert.equal(plain.querySelectorAll('ui5-li').length, 7);
+  // a model push with more rows: the trigger comes back
+  models[''].replace({ T: [...T, ...T] });
+  assert.equal(list.getAttribute('growing'), 'Button');
+});
+
 test('control registry: every portable-profile v1 control has a mapper, every tag is imported', () => {
   const profile = JSON.parse(fs.readFileSync('profile/portable-v1.json', 'utf8'));
   const names = Object.keys(profile.controls);

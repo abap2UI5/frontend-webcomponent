@@ -7,8 +7,9 @@
  *     binding.get(ctx)    the value to show (typed bindings formatted)
  *     binding.target(ctx) { model, path } for a two-way write, or null
  *     binding.parse(v)    a control value back into the model's type
- *     binding.issues      what this frontend does not support (formatters,
- *                         unknown types, named models it does not have)
+ *     binding.issues      what this frontend does not support (formatters
+ *                         outside the profile, unknown types, named models it
+ *                         does not have)
  *
  *   compileAggregation(raw) -> { path, model, relative, issues } | null
  *
@@ -23,6 +24,7 @@
 import { parseObjectLiteral } from './objectsyntax.js';
 import { compileExpression, evaluate } from './expression.js';
 import { formatValue, formatAmount, parseValue, isKnownType, shortType } from './types.js';
+import { resolveFormatter } from './formatters.js';
 
 /** Split a property value into literal text and `{...}` binding bodies,
  *  the way the UI5 binding parser does (nesting, quotes, `\{` escapes). */
@@ -119,7 +121,10 @@ export function describeBody(body) {
   }
   if (o.type !== undefined) out.type = typeName(o.type);
   if (o.formatOptions) out.formatOptions = o.formatOptions;
-  if (o.formatter !== undefined) out.formatter = typeof o.formatter === 'string' ? o.formatter : (o.formatter.$ident || 'formatter');
+  if (o.formatter !== undefined) {
+    out.formatter = typeof o.formatter === 'string' ? o.formatter : (o.formatter.$ident || 'formatter');
+    out.formatterFn = resolveFormatter(out.formatter);
+  }
   if (o.targetType) out.targetType = o.targetType;
   if (out.path === undefined && !out.parts) out.unsupported = `binding without path: {${b.slice(0, 60)}}`;
   return out;
@@ -147,13 +152,24 @@ function read(desc, ctx) {
 /** The getter evalExpression asks for `${ref}`. */
 export const exprGetter = (ctx) => (ref) => read(splitPath(ref), ctx);
 
-const display = (v) => (v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+const display = (v) => (v === null || v === undefined ? '' : v instanceof Date ? String(v) : typeof v === 'object' ? JSON.stringify(v) : String(v));
 
 function partValue(part, ctx) {
   if (part.text !== undefined) return part.text;
   if (part.expression !== undefined) return part.tree ? evaluate(part.tree, exprGetter(ctx)) : undefined;
   if (part.unsupported) return `[${part.unsupported}]`;
-  if (part.formatter) return `[formatter ${part.formatter}]`;
+  if (part.formatter) {
+    if (!part.formatterFn) return `[formatter ${part.formatter}]`;
+    // the formatter gets the (typed) value of every part, as in UI5
+    const values = part.parts
+      ? part.parts.map((p) => (p.unsupported ? undefined : formatTyped(read(p, ctx), p)))
+      : [formatTyped(read(part, ctx), part)];
+    try {
+      return part.formatterFn(...values);
+    } catch {
+      return undefined;
+    }
+  }
   if (part.parts) {
     const values = part.parts.map((p) => (p.unsupported ? '' : formatTyped(read(p, ctx), p)));
     if (part.type && ['Currency', 'Unit'].includes(shortType(part.type))) return formatAmount(values, part.type, part.formatOptions);
@@ -170,7 +186,7 @@ function formatTyped(v, part) {
 function issuesOf(part) {
   const out = [];
   if (part.unsupported) out.push({ kind: part.kind || 'binding', detail: part.unsupported });
-  if (part.formatter) out.push({ kind: 'formatter', detail: part.formatter });
+  if (part.formatter && !part.formatterFn) out.push({ kind: 'formatter', detail: part.formatter });
   if (part.type && !isKnownType(part.type)) out.push({ kind: 'type', detail: part.type });
   for (const p of part.parts || []) out.push(...issuesOf(p));
   return out;

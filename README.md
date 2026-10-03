@@ -26,7 +26,7 @@ The [abap2UI5 protocol](https://github.com/abap2UI5/protocol) is layered:
 
 | Layer | Here |
 |---|---|
-| **Core protocol** (transport, request/response, sessions, navigation, errors) | all of it: app start, events with `T_EVENT_ARG`, the model delta of the edited paths (`__delta` rows), the draft id, the `sap-contextid` session, the CSRF token handshake, the five view slots (MAIN, NEST, NEST2, POPUP, POPOVER), the app stack (`nav_app_call` / `nav_app_leave` / the back button), `PROTOCOL` check, the error text of a failed roundtrip |
+| **Core protocol** (transport, request/response, sessions, navigation, errors) | all of it: app start, events with `T_EVENT_ARG`, the model delta of the edited paths (`__delta` rows), the draft id, the `sap-contextid` session, the CSRF token handshake, the five view slots (MAIN, NEST, NEST2, POPUP, POPOVER), the app stack (`nav_app_call` / `nav_app_leave` / the back button), the URL hash (`ROUTER` action: `KEEP`/`FRESH` routes, browser Back/Forward restores, the app-state hash, app-owned hashes with their listener event, `HASH_BACK`; see [The URL hash](#the-url-hash)), `PROTOCOL` check, the error body of a failed roundtrip shown verbatim as text |
 | **Portable view profile v1** (61 controls + 4 tolerated elements, `profile/portable-v1.json`) | **65 of 65 mapped** - table below |
 | full UI5 view profile | no - a control outside the portable profile renders as a visible *unsupported control* box (its children are still rendered) and is listed in the diagnostics |
 | semantic profile (agent snapshot) | no - that is the MCP server's agent client |
@@ -34,11 +34,16 @@ The [abap2UI5 protocol](https://github.com/abap2UI5/protocol) is layered:
 Frontend actions (T_CUSTOM / `.eF` wires): `MESSAGE_TOAST`, `MESSAGE_BOX`
 (types, details, custom actions, `onClose` event), `CONTROL_GLOBAL`
 (message toast/box incl. client-composed `{0}` texts, `VIEW_SLOTS destroy` =
-popup/popover close, `BUSY_INDICATOR`, `THEMING`), `SET_TITLE`,
-`START_TIMER`, `SET_FOCUS`, `CLIPBOARD_COPY`, `OPEN_NEW_TAB` /
-`LOCATION_RELOAD` (same origin only), `URLHELPER REDIRECT` (http(s) only),
-`HASH_BACK`. Everything else is skipped, logged and listed in the
-diagnostics - never thrown.
+popup/popover close, `BUSY_INDICATOR`, `THEMING`, `INVISIBLE_MESSAGE
+announce`), `SET_TITLE`, `START_TIMER`, `SET_FOCUS`, `CLIPBOARD_COPY`,
+`OPEN_NEW_TAB` / `LOCATION_RELOAD` (same origin only), `URLHELPER REDIRECT`
+(http(s) only), `HASH_BACK` (with its fallback route), and the navigation
+family under its client-API names (`SET_PUSH_STATE`, `HASH_REPLACE`,
+`HASH_ATTACH_CHANGED`, `SET_NAV_ROUTING`, `SET_APP_STATE_ACTIVE` - a backend
+folds them into the `ROUTER` system action; as an `.eF` wire they reach the
+router as the same options). `CONTROL_BY_ID` and `BINDING_CALL` are excluded
+from the portable profile and stay unsupported. Everything else is skipped,
+logged and listed in the diagnostics - never thrown.
 
 Bindings: absolute and relative paths, list bindings with one template
 (sorter, `length`, `startIndex`), element binding (`binding="{/X}"`),
@@ -50,9 +55,14 @@ Decimal, Date, Time, DateTime, Currency with `formatOptions` such as
 expression bindings in the profile's grammar (`${...}`, operators, `? :`,
 `.length`, `Math.max/min/abs/round/floor/ceil`, `toUpperCase/toLowerCase/
 trim/indexOf/includes/startsWith/endsWith`) evaluated by a small parser - no
-`eval` -, composite text and `parts` without a formatter, the `device>`
-model. Formatters render a visible `[formatter name]` placeholder and are
-reported.
+`eval` -, composite text and `parts`, the `device>` model, and the profile's frontend
+formatters `Formatter.DateCreateObject`, `Formatter.DateAbapDateToDateObject`
+and `Formatter.DateAbapDateTimeToDateObject` (ABAP DATS/TIMS or ISO strings
+to dates, e.g. for `DatePicker.dateValue`, `minDate`, `maxDate`; same names and
+behaviour as the UI5 frontend's `model/formatter.js`). Any other formatter
+renders a visible `[formatter name]` placeholder and is reported. Tables and
+lists grow: `growing` / `growingThreshold` / `growingTriggerText` /
+`growingScrollToLoad` render the first rows and a "More" trigger.
 
 ## Embedding
 
@@ -101,13 +111,43 @@ once. [`examples/plain.html`](examples/plain.html) runs two apps side by side
 | `csrf` | `auto` (default: fetch a token when a token layer answers 403 `X-CSRF-Token: Required`, re-send once), `fetch` (before the first POST), `none`, or a token |
 | `diagnostics` | `off` hides the diagnostics panel (the console and the events still report) |
 | `document-title` | `SET_TITLE` also sets `document.title` (always on in the standalone page) |
-| `standalone` | the element owns the page: the URL hash travels with every request |
+| `standalone` | the element owns the page: the URL hash is the app's (routes, app state, Back/Forward) and travels with every request |
+| `routing` | the URL hash: `hash` (read and write the page's hash - the default with `standalone`), `events` (never touch the host's URL, emit `abap2ui5-route` - the default embedded), `off` |
 
 Properties: `headers` (extra request headers - `Authorization`, `sap-client`),
 `transport` (your own `{ roundtrip(body), endSession() }`), `session`,
-`diagnostics`; method `restart()`. Events (bubbling, composed):
-`abap2ui5-response`, `abap2ui5-request`, `abap2ui5-message`,
-`abap2ui5-title`, `abap2ui5-error`, `abap2ui5-diagnostic`.
+`diagnostics`; methods `restart()`, `navigate(hash)`. Events (bubbling,
+composed): `abap2ui5-response`, `abap2ui5-request`, `abap2ui5-message`,
+`abap2ui5-title`, `abap2ui5-error`, `abap2ui5-diagnostic`,
+`abap2ui5-route`.
+
+### The URL hash
+
+abap2UI5 apps can keep their state in the URL hash
+([spec/navigation.md](https://github.com/abap2UI5/protocol/blob/main/spec/navigation.md)):
+hash routing (`#/app/<CLASS>/<DRAFT>` in mode `KEEP`, `#/app/<CLASS>` in
+`FRESH`; a `nav_app_call` pushes a history entry, the browser Back button
+restores the caller's draft), the app-state hash
+(`#/z2ui5-xapp-state=<DRAFT>`: reload and bookmarks restore the state), and
+app-owned hashes (`hash_set` / `hash_replace` with a listener event raised
+on Back/Forward, `HASH_BACK` with a fallback route). The backend sends what
+the URL has to reflect as the `ROUTER` system action; this frontend applies
+it once per response, as the UI5 frontend's router does.
+
+- **Standalone** (`dist/index.html`, or `routing="hash"`): the page's hash is
+  the app's. It is written with the History API, a browser Back/Forward or a
+  manual edit sends the app-start-shaped restore request (no `ID`, the new
+  `HASH`), and every request carries the hash as `S_FRONT.HASH`. Inside the
+  SAP Fiori launchpad the shell part before `&/` is kept.
+- **Embedded** (the default without `standalone`): the hash is the host's.
+  The element never reads or writes `location`, sends no `HASH`, and tells
+  the host instead - an `abap2ui5-route` event per hash the app would
+  write, `{ action: 'push' | 'replace', hash, app, id }`, and
+  `{ action: 'back' }` for `HASH_BACK`. A host that routes itself can record
+  those hashes and, on its own Back button or a deep link, hand one back with
+  `element.navigate(hash)`: a route then restores that draft, an app-owned
+  hash raises the app's listener event - and that one request carries the
+  hash. `routing="off"` ignores the `ROUTER` action altogether.
 
 The protocol client, the renderer and the control registry are exported too
 (`Session`, `createFetchTransport`, `Renderer`, `defineControl`, ...), and
@@ -117,7 +157,7 @@ The protocol client, the renderer and the control registry are exported too
 
 The demo backend is abap2UI5 itself, transpiled to Node -
 [`@abap2ui5/node-runtime`](https://www.npmjs.com/package/@abap2ui5/node-runtime)
-1.146.0 - with 14 real sample apps of
+1.146.0 - with 16 real sample apps of
 [abap2UI5/samples](https://github.com/abap2UI5/samples) transpiled on top,
 exactly as the package's README describes for your own apps.
 
@@ -148,6 +188,8 @@ backend, two frontends.
 | Z2UI5_CL_SMP_APP_125 | Set the tab title (SET_TITLE) | runs fully |
 | Z2UI5_CL_SMP_APP_027 | Expression binding, types, composite parts | partial: the `RegExp(...)` expression is outside the profile - reported, the button stays disabled |
 | Z2UI5_CL_SMP_APP_453 | ObjectStatus, ObjectNumber in a table | runs fully |
+| Z2UI5_CL_SMP_APP_480 (+469) | Hash routing (KEEP) - `#/app/<CLASS>/<DRAFT>`, nav_app_call pushes, browser Back/Forward restore the drafts | runs fully |
+| Z2UI5_CL_SMP_APP_498 | App state in the URL - `#/z2ui5-xapp-state=<DRAFT>`, a reload restores the state | runs fully (the share link is the backend's) |
 
 <p>
 <img src="docs/screenshots/z2ui5_cl_smp_app_494.png" width="49%" alt="Data binding">
@@ -166,7 +208,8 @@ All screenshots: [`docs/screenshots/`](docs/screenshots).
 npm run lint
 npm test            # node:test - bindings, expressions, types, the protocol client
                     # (delta, slots, errors, busy queue), transport (contextid, CSRF),
-                    # frontend actions, the renderer on happy-dom over the recorded
+                    # the URL hash router, frontend actions (both shapes of the
+                    # profile's action list), formatters, the renderer on happy-dom over the recorded
                     # views of every demo app, the vendored-file hashes, profile coverage
 npm run e2e         # Playwright - every demo app in the web-components frontend,
                     # DOM + backend state, and the same interaction in the UI5 SPA
@@ -187,11 +230,15 @@ when present, else Playwright's own.
 ```
 src/core/       the protocol client - no DOM
   session.js      start / fire / closeSlot, response adoption (vendored applyResponse),
-                  delta (vendored buildDelta), app stack, APP-change popup teardown, busy queue
+                  delta (vendored buildDelta), app stack, APP-change popup teardown, busy queue,
+                  route restore, the error body verbatim
   transport.js    fetch POST { value }, sap-contextid, CSRF handshake, terminate HEAD
+  router.js       the URL hash: ROUTER sync, routes, app-state hash, app-owned hashes,
+                  HASH_BACK - on the page's hash or as abap2ui5-route events (embedded)
   actions.js      T_CUSTOM / eF frontend actions
 src/bindings/   model.js (long-lived models, edited paths, device>), binding.js (property and
-                list bindings), expression.js (profile grammar), types.js (typed display), objectsyntax.js
+                list bindings), expression.js (profile grammar), types.js (typed display),
+                formatters.js (the profile's Formatter.Date*), objectsyntax.js
 src/render/     renderer.js (XML -> elements, scopes, two-way, wires), wires.js (event args),
                 registry.js + controls/*.js (one mapper per UI5 control), webcomponents.js (imports)
 src/ui/         app.js (slots, popups, toast/box, busy, errors, diagnostics), styles.js
@@ -205,8 +252,8 @@ a recorded commit (`scripts/vendor-agent.mjs`, `src/vendor/agent/source.json`,
 hash test) - the same code that already speaks the protocol for agents;
 the bundler drops what the browser does not call.
 
-Bundle (`npm run build`): `dist/abap2ui5-wc.js` **1248 kB raw / 259 kB gzip**
-loaded up front (the 60 web components used, nothing else); on demand, in
+Bundle (`npm run build`): `dist/abap2ui5-wc.js` **1265 kB raw / 263 kB gzip**
+loaded up front (the 62 web components used, nothing else); on demand, in
 `dist/chunks/`: the SAP icon collection (248 kB gzip, on the first icon),
 popover internals, the CLDR data of the user's locale, extra themes.
 
@@ -256,7 +303,7 @@ Portable profile v1: **65 of 65** controls mapped (42 full, 23 basic).
 | sap.m.SegmentedButton | `ui5-segmented-button` | full |  |
 | sap.m.SegmentedButtonItem | `ui5-segmented-button-item` | full |  |
 | sap.m.Select | `ui5-select` | full |  |
-| sap.m.DatePicker | `ui5-date-picker` | basic | value/valueFormat/displayFormat; no dateValue (a Date object has no JSON wire form) |
+| sap.m.DatePicker | `ui5-date-picker` | basic | value (two-way), valueFormat, displayFormat, minDate/maxDate; dateValue one-way (from a frontend formatter) |
 | sap.m.SearchField | `ui5-input` + `ui5-icon` | full |  |
 | sap.m.ComboBox | `ui5-combobox` | full |  |
 | sap.m.MultiInput | `ui5-multi-input` | basic | tokens are shown; a token delete fires tokenUpdate but is not written back into the bound token table (UI5 needs z2ui5.cc.MultiInputExt for that too) |
@@ -264,13 +311,13 @@ Portable profile v1: **65 of 65** controls mapped (42 full, 23 basic).
 | sap.m.MultiComboBox | `ui5-multi-combobox` | full |  |
 | sap.m.StepInput | `ui5-step-input` | full |  |
 | sap.ui.core.ListItem | `ui5-option` + `ui5-cb-item` + `ui5-mcb-item` | full |  |
-| sap.m.DateTimePicker | `ui5-datetime-picker` | basic | value/valueFormat/displayFormat; no dateValue |
+| sap.m.DateTimePicker | `ui5-datetime-picker` | basic | value (two-way), valueFormat, displayFormat, minDate/maxDate; dateValue one-way (from a frontend formatter) |
 | sap.m.Button | `ui5-button` (`ui5-toolbar-button` in a toolbar) | full |  |
 | sap.m.ToggleButton | `ui5-toggle-button` | full |  |
 | sap.m.Column | `ui5-table-header-cell` | basic | header, width, hAlign, minScreenWidth; no demandPopin/footer |
 | sap.m.ColumnListItem | `ui5-table-row` + `ui5-table-cell` | basic | cells, type (interactive rows), selected, press; highlight not shown |
-| sap.m.Table | `ui5-table` (+ header row/cells, `ui5-table-selection-multi`/`-single`) | basic | columns, items (bound or static), header toolbar, noDataText, MultiSelect/SingleSelect via the selected binding, itemPress, selectionChange; no growing (all rows render), no Delete mode, no grouping |
-| sap.m.List | `ui5-list` | basic | items (bound or static), headerText, mode, itemPress, selectionChange, delete; no growing, no grouping |
+| sap.m.Table | `ui5-table` (+ header row/cells, `ui5-table-selection-multi`/`-single`) | basic | columns, items (bound or static), header toolbar, noDataText, MultiSelect/SingleSelect via the selected binding, itemPress, selectionChange, growing (threshold, trigger text, scroll to load); no Delete mode, no grouping |
+| sap.m.List | `ui5-list` | basic | items (bound or static), headerText, mode, itemPress, selectionChange, delete, growing (threshold, trigger text, scroll to load); no grouping |
 | sap.m.StandardListItem | `ui5-li` | basic | title, description, icon, info, infoState, highlight, type, selected; no counter/avatar |
 | sap.m.CustomListItem | `ui5-li-custom` | full |  |
 | sap.m.Tree | `ui5-tree` | basic | nested array binding, headerText, mode, headerToolbar, toggleOpenState/itemPress/selectionChange |
@@ -328,14 +375,22 @@ requires.
 
 - **Not rendered:** controls outside the portable profile (sap.ui.table,
   sap.f, sap.uxap, sap.ui.comp, z2ui5.cc custom controls, ...) - visible box +
-  diagnostics; formatter functions; named models other than `device>`;
-  XML templating (`template:repeat`); `CONTROL_BY_ID` calls, `BINDING_CALL`,
-  hash routing actions; `prevent_default_expr`; expressions outside the
-  profile grammar (`RegExp`, `odata.*`).
+  diagnostics; formatter functions other than the profile's `Formatter.Date*`;
+  named models other than `device>`; XML templating (`template:repeat`);
+  `CONTROL_BY_ID` calls and `BINDING_CALL` (excluded from the portable
+  profile); `prevent_default_expr`; expressions outside the profile grammar
+  (`RegExp`, `odata.*`).
+- **Frontend actions the profile allows but this frontend does not run yet**
+  (skipped and reported): `DOWNLOAD_B64_FILE`, `SCROLL_TO`,
+  `SCROLL_INTO_VIEW`, `SET_FAVICON`, `SYSTEM_LOGOUT`, `STORE_DATA`,
+  `KEYBOARD_SHORTCUT`, `PLAY_AUDIO`, `SET_SIZE_LIMIT` (the last one MAY be a
+  no-op).
 - **Deviations from the UI5 rendering:** SimpleForm is a two-column CSS grid
-  (Label opens a row, Title opens a group) rather than `ui5-form`; tables and
-  lists render all rows (no growing); MessageToast position options are
-  ignored; `DatePicker.dateValue` is not bound (no JSON form).
+  (Label opens a row, Title opens a group) rather than `ui5-form`;
+  MessageToast position options are ignored; `DatePicker.dateValue` is
+  one-way (a formatter binding, as in UI5 - the edit travels through
+  `value`); growing renders on the client (all rows are in the model, as with
+  UI5's JSON model).
 - **NEST/NEST2** (profile v1.1) are rendered into the MAIN control the
   display names, appended to its content.
 - **Backend concurrency:** the e2e tests run with one worker - the transpiled
@@ -347,6 +402,9 @@ requires.
 
 - `npm run vendor -- /path/to/mcp-server [--ref <sha>]` re-vendors the agent
   modules; `npm run vendor:check` verifies them.
+- `node scripts/vendor-profile.mjs /path/to/protocol [--ref <rev>]` re-copies
+  `profile/portable-v1.json` (default `origin/main`) and records the commit in
+  `profile/source.json`.
 - `node scripts/vendor-samples.mjs /path/to/samples` re-copies the demo apps
   listed in `demo/apps.json`; `node scripts/record-fixtures.mjs` re-records the
   views the renderer unit tests render.
