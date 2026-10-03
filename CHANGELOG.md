@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Profile** re-copied from protocol 604d267 (spec revision 0.3): the
+  additive `actions.api` / `actions.wire` split; `scripts/profile-actions.mjs`
+  reads `actions.api` too.
 - **Vendored agent modules** re-pinned to abap2UI5/mcp-server a4d9f07 (PR
   #44): viewxml, snapshot and appclient follow the protocol's frontend rules
   there too; this frontend's own session already did and is unchanged.
