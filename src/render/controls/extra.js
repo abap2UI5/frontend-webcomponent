@@ -37,6 +37,7 @@ define('sap.tnt.InfoLabel', {
 });
 
 define('sap.m.Token', {
+  note: 'text, key, selected',
   render(node, api) {
     const el = api.el('ui5-token');
     const a = node.attrs;

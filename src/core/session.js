@@ -95,6 +95,10 @@ export class Session {
     const where = await this.location(app);
     const front = { ORIGIN: where.origin, PATHNAME: where.pathname, SEARCH: where.search };
     if (where.hash) front.HASH = where.hash;
+    // the session block on the app start (spec/request.md, CONFIG): the
+    // device as S_DEVICE; no S_UI5 - there is no UI5 runtime here
+    const device = this.deviceBlock();
+    if (device) front.CONFIG = { S_DEVICE: device };
     this.state = emptyState();
     for (const m of Object.values(this.models)) {
       m.edited.clear();
@@ -126,6 +130,21 @@ export class Session {
       body.MODEL = buildDelta([...sent.keys()], model.data);
     }
     return this.send(body, sent ? { model, sent } : null, flags);
+  }
+
+  /** S_DEVICE from the device model, in the UI5 frontend's shape. */
+  deviceBlock() {
+    const d = this.namedModels.device && this.namedModels.device.data;
+    if (!d || !d.system) return null;
+    const system = d.system.phone ? 'phone' : d.system.tablet ? 'tablet' : d.system.combi ? 'combi' : 'desktop';
+    return {
+      SYSTEM: system,
+      BROWSER: { NAME: d.browser.name, VERSION: d.browser.version },
+      OS: { NAME: d.os.name, VERSION: d.os.version },
+      SUPPORT: { TOUCH: !!d.support.touch, POINTER: true, RETINA: (globalThis.devicePixelRatio || 1) > 1 },
+      ORIENTATION: d.orientation.landscape ? 'landscape' : 'portrait',
+      RESIZE: { WIDTH: d.resize.width, HEIGHT: d.resize.height },
+    };
   }
 
   /** Close a popup/popover locally: the slot goes, its unsent edits with it. */
@@ -184,6 +203,18 @@ export class Session {
     const prev = this.state;
     const next = applyResponse(prev, response);
     this.lastResponse = response;
+    // another APP than the one rendered last takes POPUP and POPOVER down -
+    // unless this very response displays them (spec/response.md)
+    if (prev.app && next.app && next.app !== prev.app) {
+      const shown = new Set(((response.S_FRONT.S_ACTION || {}).T_SYSTEM || [])
+        .filter((a) => Array.isArray(a) && a[0] === 'VIEW_SLOTS' && a[1] === 'display').map((a) => a[2]));
+      for (const slot of ['POPUP', 'POPOVER']) {
+        if (next.slots[slot] && !shown.has(slot)) {
+          delete next.slots[slot];
+          delete next.models[slot];
+        }
+      }
+    }
     if (next.app && next.app !== prev.app) {
       const i = this.appStack.lastIndexOf(next.app);
       if (i >= 0) this.appStack = this.appStack.slice(0, i + 1);

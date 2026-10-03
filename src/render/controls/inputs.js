@@ -381,7 +381,7 @@ define('sap.m.TimePicker', {
   read: { value: (el) => el.value },
   status: 'basic',
 });
-define('sap.m.DateTimePicker', { tag: 'ui5-datetime-picker', props: dateProps, events: dateEvents, read: { value: (el) => el.value }, status: 'basic' });
+define('sap.m.DateTimePicker', { tag: 'ui5-datetime-picker', props: dateProps, events: dateEvents, read: { value: (el) => el.value }, status: 'basic', note: 'value/valueFormat/displayFormat; no dateValue' });
 
 define('sap.m.StepInput', {
   tag: 'ui5-step-input',

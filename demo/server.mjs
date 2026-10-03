@@ -8,7 +8,7 @@
  *                             release (the cross-check in test/e2e)
  *   /                         the web-components frontend: dist/ (index.html,
  *                             abap2ui5-wc.js and its chunks)
- *   /examples/*               the embedding examples
+ *   /examples/plain.html      the embedding example (copied into dist/ by the build)
  *
  *   node demo/server.mjs [--port 4300] [--host 127.0.0.1]
  *
@@ -39,7 +39,6 @@ await import(pathToFileURL(apps).href);
 
 const app = express();
 app.use('/sap/bc/z2ui5', await createApp());
-app.use('/examples', express.static(path.join(ROOT, 'examples')));
 app.use('/', express.static(path.join(ROOT, 'dist')));
 const server = app.listen(port, host, () => {
   console.log(`demo/server: http://${host}:${port}/?app_start=Z2UI5_CL_SMP_APP_493  (web components)`);

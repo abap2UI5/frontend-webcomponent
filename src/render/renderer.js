@@ -240,7 +240,7 @@ export class Renderer {
     const el = this.doc.createElement(mapper.tag);
     if (mapper.init) mapper.init(el, node, api, ctx);
     this.applyAttributes(el, mapper, node, api);
-    this.aggregations(el, mapper, node, api, ctx);
+    this.aggregations(el, mapper, node, api);
     if (mapper.after) mapper.after(el, node, api, ctx);
     return el;
   }
@@ -249,7 +249,7 @@ export class Renderer {
     const props = mapper.props || {};
     const events = mapper.events || {};
     const aggs = mapper.aggregations || {};
-    for (const [attr, raw] of Object.entries(node.attrs)) {
+    for (const attr of Object.keys(node.attrs)) {
       if (skip.includes(attr) || COMMON.has(attr) || IGNORED_ATTR.test(attr) && !props[attr]) continue;
       if (events[attr]) {
         api.wire(el, attr, events[attr]);
@@ -288,7 +288,7 @@ export class Renderer {
     return out;
   }
 
-  aggregations(el, mapper, node, api, ctx) {
+  aggregations(el, mapper, node, api) {
     const aggs = mapper.aggregations || {};
     const groups = this.groups(node, mapper);
     const names = new Set([...groups.keys(), ...Object.keys(aggs).filter((a) => node.attrs[a] !== undefined)]);

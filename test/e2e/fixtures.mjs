@@ -1,3 +1,4 @@
+/* global sap */
 /*
  * Drivers for the two frontends and the protocol recorder.
  *
@@ -190,7 +191,6 @@ export class Ui5 {
     return this.page.evaluate(([src, a]) => {
       const Element = sap.ui.require('sap/ui/core/Element');
       const all = Element && Element.registry ? Element.registry.filter(() => true) : Object.values(sap.ui.getCore().mElements || {});
-      // eslint-disable-next-line no-new-func
       return new Function('controls', 'arg', `return (${src})(controls, arg)`)(all, a);
     }, [fn.toString(), arg]);
   }

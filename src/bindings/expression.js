@@ -180,9 +180,7 @@ function bin(op, a, b) {
   switch (op) {
     case '||': return a || b;
     case '&&': return a && b;
-    // eslint-disable-next-line eqeqeq
     case '==': return a == b;
-    // eslint-disable-next-line eqeqeq
     case '!=': return a != b;
     case '===': return a === b;
     case '!==': return a !== b;

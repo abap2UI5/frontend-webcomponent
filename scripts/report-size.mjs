@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /*
- * After `vite build`: copies the standalone page into dist/ and reports the
+ * After `vite build`: copies the standalone page and the plain-HTML embedding
+ * example into dist/ and reports the
  * bundle sizes (raw and gzip) - the main bundle and the on-demand chunks.
  */
 import fs from 'node:fs';
@@ -11,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(ROOT, 'dist');
 fs.copyFileSync(path.join(ROOT, 'index.html'), path.join(dist, 'index.html'));
+fs.mkdirSync(path.join(dist, 'examples'), { recursive: true });
+fs.copyFileSync(path.join(ROOT, 'examples', 'plain.html'), path.join(dist, 'examples', 'plain.html'));
 const kb = (n) => `${(n / 1024).toFixed(1)} kB`;
 const files = [];
 const walk = (dir) => {

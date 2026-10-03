@@ -163,7 +163,7 @@ export function parseValue(text, typeName, formatOptions = {}) {
   const t = shortType(typeName);
   const o = formatOptions || {};
   if (NUMBER_TYPES.has(t)) {
-    const s = String(text ?? '').replace(/[\s ]/g, '').replace(/,(?=\d{3}(\D|$))/g, '');
+    const s = String(text ?? '').replace(/[\s\u00a0]/g, '').replace(/,(?=\d{3}(\D|$))/g, '');
     if (s === '') return t === 'Integer' || t === 'Float' ? 0 : null;
     const n = INTEGER_TYPES.has(t) ? parseInt(s, 10) : parseFloat(s.replace(',', '.'));
     return Number.isNaN(n) ? text : n;

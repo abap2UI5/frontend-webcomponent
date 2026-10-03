@@ -223,7 +223,7 @@ export function compileAggregation(raw) {
   const desc = describeBody(parts[0].body);
   if (desc.path === undefined) return { unsupported: desc.unsupported || 'aggregation binding without path', issues: [] };
   const issues = [];
-  let o = null;
+  let o;
   try {
     o = /:/.test(parts[0].body) && !SIMPLE.test(parts[0].body) ? parseObjectLiteral(parts[0].body) : null;
   } catch {

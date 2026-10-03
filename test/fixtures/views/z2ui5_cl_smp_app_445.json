@@ -1,0 +1,17 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_445",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\"><Shell><Page title=\"abap2UI5 - Device - Device Model: Phone, Tablet, Desktop\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"The 'device&gt;' model is a one-way JSONModel over sap.ui.Device. Resize the window or rotate your device and the values update live - no backend round-trip. It is available in this view and in the dialog below.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><Panel class=\"sapUiSmallMargin\" headerText=\"Live device properties\"><form:SimpleForm layout=\"ResponsiveGridLayout\" editable=\"false\"><Label text=\"System type\"/><ObjectStatus state=\"Information\" text=\"{= ${device&gt;/system/phone} ? 'Phone' : (${device&gt;/system/tablet} ? 'Tablet' : (${device&gt;/system/desktop} ? 'Desktop' : 'Other')) }\"/><Label text=\"Orientation\"/><ObjectStatus text=\"{= ${device&gt;/orientation/landscape} ? 'Landscape' : 'Portrait' }\"/><Label text=\"Window size\"/><ObjectStatus text=\"{device&gt;/resize/width} x {device&gt;/resize/height} px\"/><Label text=\"Touch support\"/><ObjectStatus state=\"{= ${device&gt;/support/touch} ? 'Success' : 'None' }\" text=\"{= ${device&gt;/support/touch} ? 'Yes' : 'No' }\"/><Label text=\"Browser\"/><Text text=\"{device&gt;/browser/name} {device&gt;/browser/version}\"/><Label text=\"Operating system\"/><Text text=\"{device&gt;/os/name} {device&gt;/os/version}\"/></form:SimpleForm></Panel><MessageStrip text=\"{= ${device&gt;/system/phone} ? 'Compact layout - you are on a phone.' : 'Full layout - tablet or desktop.' }\" type=\"{= ${device&gt;/system/phone} ? 'Warning' : 'Success' }\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><Panel class=\"sapUiSmallMargin\" headerText=\"Responsive IconTabBar (expanded only when it is not a phone)\"><IconTabBar class=\"sapUiResponsiveContentPadding\" expanded=\"{= !${device&gt;/system/phone} }\"><items><IconTabFilter icon=\"sap-icon://money-bills\" text=\"Sales\" key=\"sales\"><Text text=\"On a phone the tab content is collapsed to save space; on tablet/desktop it stays expanded.\"/></IconTabFilter><IconTabFilter icon=\"sap-icon://product\" text=\"Stock\" key=\"stock\"><Text text=\"Everything here is driven purely by the device&gt; model - no event handler.\"/></IconTabFilter></items></IconTabBar></Panel><Button press=\".eB(['OPEN_POPUP'])\" text=\"Open dialog (device model inside a popup)\" icon=\"sap-icon://sys-monitor\" class=\"sapUiSmallMargin\"/></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ }
+}

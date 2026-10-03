@@ -1,0 +1,53 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_019",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\"><Shell><Page title=\"abap2UI5 - Table - Selection Modes: Single and Multi Select\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"A SegmentedButton switches the table's selection mode (None, Single, Multi) at runtime; a second table below collects the rows selected in the first.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><SegmentedButton selectedKey=\"{/SEL_MODE}\" selectionChange=\".eB(['BUTTON_SEGMENT_CHANGE'])\"><items><SegmentedButtonItem key=\"None\" text=\"None\"/><SegmentedButtonItem key=\"SingleSelect\" text=\"SingleSelect\"/><SegmentedButtonItem key=\"SingleSelectLeft\" text=\"SingleSelectLeft\"/><SegmentedButtonItem key=\"SingleSelectMaster\" text=\"SingleSelectMaster\"/><SegmentedButtonItem key=\"MultiSelect\" text=\"MultiSelect\"/></items></SegmentedButton><Table items=\"{/T_TAB}\" headerText=\"Table\" mode=\"None\"><columns><Column><Text text=\"Title\"/></Column><Column><Text text=\"Value\"/></Column><Column><Text text=\"Description\"/></Column></columns><items><ColumnListItem selected=\"{SELKZ}\"><cells><Text text=\"{TITLE}\"/><Text text=\"{VALUE}\"/><Text text=\"{DESCR}\"/></cells></ColumnListItem></items></Table><Table items=\"{/T_TAB_SEL}\"><headerToolbar><OverflowToolbar><Title text=\"Selected Entries\"/><Button press=\".eB(['BUTTON_READ_SEL'])\" text=\"copy selected entries\" icon=\"sap-icon://pull-down\"/></OverflowToolbar></headerToolbar><columns><Column><Text text=\"Title\"/></Column><Column><Text text=\"Value\"/></Column><Column><Text text=\"Description\"/></Column></columns><items><ColumnListItem><cells><Text text=\"{TITLE}\"/><Text text=\"{VALUE}\"/><Text text=\"{DESCR}\"/></cells></ColumnListItem></items></Table></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "SEL_MODE": "None",
+  "T_TAB": [
+   {
+    "DESCR": "this is a description",
+    "SELKZ": false,
+    "TITLE": "title_01",
+    "VALUE": "value_01"
+   },
+   {
+    "DESCR": "this is a description",
+    "SELKZ": false,
+    "TITLE": "title_02",
+    "VALUE": "value_02"
+   },
+   {
+    "DESCR": "this is a description",
+    "SELKZ": false,
+    "TITLE": "title_03",
+    "VALUE": "value_03"
+   },
+   {
+    "DESCR": "this is a description",
+    "SELKZ": false,
+    "TITLE": "title_04",
+    "VALUE": "value_04"
+   },
+   {
+    "DESCR": "this is a description",
+    "SELKZ": false,
+    "TITLE": "title_05",
+    "VALUE": "value_05"
+   }
+  ],
+  "T_TAB_SEL": []
+ }
+}

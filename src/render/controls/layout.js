@@ -59,6 +59,7 @@ define('sap.m.NavContainer', {
  * headerContent) and a ui5-bar footer.
  */
 define('sap.m.Page', {
+  wc: '`ui5-page` + `ui5-bar` header/footer',
   render(node, api) {
     const el = api.el('ui5-page', { 'background-design': 'Solid', class: 'a2u-page' });
     const a = node.attrs;
@@ -148,8 +149,8 @@ define('sap.m.ScrollContainer', {
   },
 });
 
-define('sap.ui.layout.VerticalLayout', { ...passthrough('a2u-vlayout'), status: 'basic' });
-define('sap.ui.layout.HorizontalLayout', { ...passthrough('a2u-hlayout'), status: 'basic' });
+define('sap.ui.layout.VerticalLayout', { ...passthrough('a2u-vlayout'), status: 'basic', note: 'a column of its content; width/spacing not modelled' });
+define('sap.ui.layout.HorizontalLayout', { ...passthrough('a2u-hlayout'), status: 'basic', note: 'an inline row of its content; allowWrapping always on' });
 
 /* sap.ui.layout.Grid: a 12-column CSS grid; spans from defaultSpan / GridData. */
 function spanOf(spec, size) {
@@ -189,6 +190,7 @@ define('sap.ui.layout.Grid', {
  * group. The responsive layouts and column counts are not modelled.
  */
 define('sap.ui.layout.form.SimpleForm', {
+  wc: 'CSS grid + `ui5-title`',
   render(node, api) {
     const el = api.el('div', { class: 'a2u-form' });
     const a = node.attrs;
@@ -237,6 +239,7 @@ define('sap.ui.layout.form.SimpleForm', {
 
 /* sap.ui.layout.form.Form: containers -> groups, elements -> label + fields. */
 define('sap.ui.layout.form.Form', {
+  wc: 'CSS grid + `ui5-title`',
   render(node, api) {
     const el = api.el('div', { class: 'a2u-form' });
     const a = node.attrs;
@@ -326,6 +329,7 @@ function toolbarButton(btn, api) {
 
 function toolbar(design) {
   return {
+    wc: '`ui5-toolbar` (+ `ui5-toolbar-button`, `-item`, `-spacer`, `-separator`)',
     render(node, api) {
       const el = api.el('ui5-toolbar', { class: 'a2u-toolbar', design });
       const a = node.attrs;
@@ -424,7 +428,7 @@ define('sap.m.IconTabBar', {
     }
     api.prop(el, 'selectedKey', {
       set: (e, v) => { key = v; sync(); },
-      twoWay: { event: 'tab-select', read: (e) => { const t = tabs().find((x) => x.selected); return t ? keyOf(t) : ''; } },
+      twoWay: { event: 'tab-select', read: () => { const t = tabs().find((x) => x.selected); return t ? keyOf(t) : ''; } },
     });
     if (a.expandable !== undefined || a.expanded !== undefined) api.bind(a.expanded ?? 'true', (v) => el.toggleAttribute('collapsed', !api.toBool(v)));
     if (a.headerBackgroundDesign !== undefined) api.bind(a.headerBackgroundDesign, (v) => el.setAttribute('header-background-design', v === 'Transparent' ? 'Transparent' : 'Solid'));

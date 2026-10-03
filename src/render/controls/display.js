@@ -81,6 +81,7 @@ define('sap.m.Link', {
 });
 
 define('sap.m.Button', {
+  wc: '`ui5-button` (`ui5-toolbar-button` in a toolbar)',
   tag: 'ui5-button',
   props: {
     text,
@@ -189,6 +190,7 @@ const stateClass = (el, v) => {
 };
 
 define('sap.m.ObjectStatus', {
+  wc: 'styled `<span>` + `ui5-icon`',
   render(node, api) {
     const el = api.el('span', { class: 'a2u-status' });
     const ic = api.el('ui5-icon', { class: 'a2u-status-icon' });
@@ -230,6 +232,8 @@ define('sap.m.ObjectNumber', {
 });
 
 define('sap.m.ObjectIdentifier', {
+  wc: 'HTML (+ `ui5-link` when titleActive)',
+  note: 'title, text, titleActive/titlePress',
   render(node, api) {
     const el = api.el('div', { class: 'a2u-identifier' });
     const a = node.attrs;
@@ -350,5 +354,5 @@ define('sap.m.GenericTag', {
   status: 'basic',
 });
 
-define('sap.m.ToolbarSpacer', { render: (node, api) => api.el('div', { class: 'a2u-toolbar-spacer', 'data-a2u-spacer': true }) });
-define('sap.m.ToolbarSeparator', { render: (node, api) => api.el('div', { class: 'a2u-toolbar-separator', 'data-a2u-separator': true }) });
+define('sap.m.ToolbarSpacer', { wc: '`ui5-toolbar-spacer`', render: (node, api) => api.el('div', { class: 'a2u-toolbar-spacer', 'data-a2u-spacer': true }) });
+define('sap.m.ToolbarSeparator', { wc: '`ui5-toolbar-separator`', render: (node, api) => api.el('div', { class: 'a2u-toolbar-separator', 'data-a2u-separator': true }) });

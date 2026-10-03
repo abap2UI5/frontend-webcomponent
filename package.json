@@ -3,13 +3,37 @@
   "version": "0.1.0",
   "private": true,
   "description": "An alternative abap2UI5 frontend: renders portable-profile views with UI5 Web Components, standalone or embedded as <abap2ui5-app> in any web app.",
+  "keywords": [
+    "abap2ui5",
+    "ui5-webcomponents",
+    "web-components",
+    "server-driven-ui",
+    "custom-element"
+  ],
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abap2UI5/frontend-webcomponent.git"
+  },
+  "main": "dist/abap2ui5-wc.js",
+  "module": "dist/abap2ui5-wc.js",
+  "exports": {
+    ".": "./dist/abap2ui5-wc.js",
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev": "node demo/server.mjs --dev",
     "build": "vite build && node scripts/report-size.mjs",
     "lint": "eslint .",
     "test": "node --test \"test/unit/*.test.mjs\"",
@@ -18,11 +42,9 @@
     "demo:build": "node demo/build-backend.mjs",
     "demo:serve": "node demo/server.mjs",
     "e2e": "playwright test",
-    "screenshots": "SCREENSHOTS=1 playwright test test/e2e/screenshots.spec.mjs"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/abap2UI5/frontend-webcomponent.git"
+    "screenshots": "SCREENSHOTS=1 playwright test test/e2e/screenshots.spec.mjs",
+    "record-fixtures": "node scripts/record-fixtures.mjs",
+    "coverage": "node scripts/generate-coverage.mjs"
   },
   "dependencies": {
     "@ui5/webcomponents": "2.27.2",
@@ -39,6 +61,7 @@
     "eslint": "10.12.0",
     "express": "5.2.1",
     "globals": "17.13.0",
+    "happy-dom": "20.14.5",
     "vite": "8.3.2"
   }
 }

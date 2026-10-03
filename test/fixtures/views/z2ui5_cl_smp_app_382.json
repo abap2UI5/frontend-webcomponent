@@ -1,0 +1,22 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_382",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\" xmlns:form=\"sap.ui.layout.form\"><Shell><Page title=\"abap2UI5 - Message - MessageBox, Types and Custom Actions\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"This sample demonstrates MessageBox: open confirm, information, success, warning, error, or a custom dialog with your own actions.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><headerContent><Link text=\"UI5 Demo Kit\" target=\"_blank\" href=\"https://sdk.openui5.org/entity/sap.m.MessageBox/sample/sap.m.sample.MessageBox\"/></headerContent><Panel headerText=\"Message Box Configuration\"><form:SimpleForm title=\"Settings\" editable=\"true\"><form:content><Label text=\"Title\"/><Input value=\"{/TITLE}\"/><Label text=\"Message\"/><Input value=\"{/MESSAGE}\"/><Label text=\"Details\"/><TextArea value=\"{/DETAILS}\" rows=\"3\"/></form:content></form:SimpleForm></Panel><footer><OverflowToolbar><Text text=\"Open Message Box:\"/><ToolbarSpacer/><Button press=\".eB(['confirm'])\" text=\"Confirm\"/><Button press=\".eB(['information'])\" text=\"Information\"/><Button press=\".eB(['success'])\" text=\"Success\" type=\"Accept\"/><Button press=\".eB(['warning'])\" text=\"Warning\"/><Button press=\".eB(['error'])\" text=\"Error\" type=\"Reject\"/><Button press=\".eB(['CUSTOM'])\" text=\"Custom\" type=\"Emphasized\"/></OverflowToolbar></footer></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "DETAILS": "These are additional details about the message.",
+  "MESSAGE": "This is a message box.",
+  "TITLE": "abap2UI5"
+ }
+}

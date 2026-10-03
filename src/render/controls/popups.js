@@ -42,6 +42,7 @@ function closeWiring(el, node, api, wired) {
 }
 
 define('sap.m.Dialog', {
+  wc: '`ui5-dialog` + `ui5-bar` footer',
   render(node, api) {
     const el = api.el('ui5-dialog', { class: 'a2u-dialog' });
     const a = node.attrs;

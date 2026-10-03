@@ -1,0 +1,21 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_494",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\" xmlns:form=\"sap.ui.layout.form\"><Shell><Page title=\"abap2UI5 - Basics II - Data Binding: Input and Button\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"client-&gt;_bind( name ) connects the public attribute NAME with the input below. Type a name and leave the field: the text next to it changes without any ABAP code, because both are bound to the same attribute. Press Greet and the backend reads NAME - already filled in, no event argument needed -, writes GREETING back into the view and confirms the roundtrip with a MessageBox.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><form:SimpleForm title=\"Data Binding\" editable=\"true\"><form:content><Label text=\"your name\"/><Input value=\"{/NAME}\"/><Label text=\"bound to the same attribute\"/><Text text=\"{/NAME}\"/><Label text=\"written by the backend\"/><Text text=\"{/GREETING}\"/><Button press=\".eB(['GREET'])\" text=\"Greet\"/></form:content></form:SimpleForm></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "GREETING": "",
+  "NAME": "World"
+ }
+}

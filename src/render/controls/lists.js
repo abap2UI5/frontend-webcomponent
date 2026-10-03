@@ -19,6 +19,7 @@ const SELECT_MODE = {
 /* -------------------------------------------------------------- Table --- */
 
 define('sap.m.Table', {
+  wc: '`ui5-table` (+ header row/cells, `ui5-table-selection-multi`/`-single`)',
   render(node, api) {
     const wrap = api.el('div', { class: 'a2u-table' });
     const a = node.attrs;

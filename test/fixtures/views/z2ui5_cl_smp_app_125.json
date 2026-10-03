@@ -1,0 +1,20 @@
+{
+ "S_FRONT": {
+  "APP": "Z2UI5_CL_SMP_APP_125",
+  "ID": "FIXTURE",
+  "PROTOCOL": 2,
+  "S_ACTION": {
+   "T_SYSTEM": [
+    [
+     "VIEW_SLOTS",
+     "display",
+     "MAIN",
+     "<mvc:View displayBlock=\"true\" height=\"100%\" xmlns=\"sap.m\" xmlns:mvc=\"sap.ui.core.mvc\" xmlns:form=\"sap.ui.layout.form\"><Shell><Page title=\"abap2UI5 - Browser - Set the Tab Title\" showNavButton=\"false\" navButtonPress=\".eB(['___ZZZ_NAL'])\"><MessageStrip text=\"Enter a title and press the button to run the set_title front-end action, which updates the browser tab title (document.title) without reloading the page.\" type=\"Information\" showIcon=\"true\" class=\"sapUiSmallMargin\"/><form:SimpleForm title=\"Form Title\" editable=\"true\"><form:content><Label text=\"title\"/><Input value=\"{/TITLE}\"/><Button press=\".eB(['SET_TITLE'])\" text=\"Set Title\"/></form:content></form:SimpleForm></Page></Shell></mvc:View>"
+    ]
+   ]
+  }
+ },
+ "MODEL": {
+  "TITLE": "my title"
+ }
+}
