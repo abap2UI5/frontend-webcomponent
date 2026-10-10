@@ -24,6 +24,8 @@ function fakeWindow(initial = '') {
     },
     addEventListener(t, f) { if (t === 'hashchange') listeners.add(f); },
     removeEventListener(t, f) { listeners.delete(f); },
+    /* the browser's Forward button */
+    forward() { if (pos < entries.length - 1) { pos += 1; fire(); } },
     /* the user edits the URL (a new entry + hashchange) */
     edit(h) { entries.splice(pos + 1); entries.push(h); pos += 1; fire(); },
     entries,
@@ -287,4 +289,23 @@ test('CONTROL_GLOBAL: every allowed global of the profile is handled', async () 
   }
   assert.deepEqual(reports, []);
   assert.ok(seen.some((x) => x[0] === 'announce' && x[1] === 'text'));
+});
+
+test('HASH_BACK after the browser went back over every push takes the fallback, not history.back()', () => {
+  const { win, router, seen } = setup(fakeWindow('/detail'));
+  router.sync({ setHashEvent: 'HC' }, { id: 'D1', app: 'Z_A' });
+  router.sync({ setPushState: '/second' }, { id: 'D2', app: 'Z_A' });
+  win.history.back(); // the browser's Back: onto the cold deep link again
+  assert.equal(win.location.hash, '#/detail');
+  router.back('/');
+  assert.deepEqual(win.calls.at(-1), ['replace', '/'], 'the page stays - no history.back() off it');
+  assert.deepEqual(seen.raise.at(-1), ['HC', '#/']);
+  // Forward onto the pushed entry again: one in-app step back is there
+  const fwd = setup(fakeWindow('/detail'));
+  fwd.router.sync({ setHashEvent: 'HC' }, { id: 'D1', app: 'Z_A' });
+  fwd.router.sync({ setPushState: '/second' }, { id: 'D2', app: 'Z_A' });
+  fwd.win.history.back();
+  fwd.win.forward();
+  fwd.router.back('/');
+  assert.deepEqual(fwd.win.calls.at(-1), ['back']);
 });
