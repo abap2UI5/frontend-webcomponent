@@ -55,6 +55,21 @@ export const valueStateText = {
 /** UI5 CSS size ('100%', '20rem', 'auto') or nothing. */
 export const cssSize = (v) => (v === undefined || v === null || v === '' || v === 'auto' ? '' : String(v));
 
+/**
+ * A URL that runs script (javascript:, vbscript:) or opens markup of its own
+ * (data:text/html) - read the way the browser reads it: the URL parser drops
+ * every tab and line break and the control characters and spaces in front,
+ * so "java\tscript:" and "\x01javascript:" are javascript: URLs as well.
+ */
+export function isScriptUrl(value) {
+  // eslint-disable-next-line no-control-regex
+  const v = String(value ?? '').replace(/[\t\n\r]/g, '').replace(/^[\x00-\x20]+/, '').toLowerCase();
+  return /^(javascript|vbscript):/.test(v) || /^data:\s*text\/html/.test(v);
+}
+
+/* the attributes that hold a URL the browser follows or loads */
+const URL_ATTRIBUTES = ['href', 'src', 'xlink:href', 'action', 'formaction'];
+
 /** Strip what must not run: scripts, event handlers, javascript: URLs. */
 export function sanitizeHtml(doc, html) {
   const tpl = doc.createElement('template');
@@ -62,13 +77,15 @@ export function sanitizeHtml(doc, html) {
   const walk = (node) => {
     for (const child of [...node.children]) {
       const tag = child.tagName.toLowerCase();
-      if (['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form'].includes(tag)) {
+      // animate and set write an attribute of their parent - an SVG <a>'s
+      // href - after this check has passed it
+      if (['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'animate', 'set'].includes(tag)) {
         child.remove();
         continue;
       }
       for (const a of [...child.attributes]) {
         const n = a.name.toLowerCase();
-        if (n.startsWith('on') || ((n === 'href' || n === 'src' || n === 'xlink:href' || n === 'action') && /^\s*(javascript|vbscript|data:text\/html)/i.test(a.value))) {
+        if (n.startsWith('on') || (URL_ATTRIBUTES.includes(n) && isScriptUrl(a.value))) {
           child.removeAttribute(a.name);
         }
       }

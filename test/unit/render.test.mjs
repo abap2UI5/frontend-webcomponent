@@ -203,3 +203,23 @@ test('webcomponents.js imports the module of every tag in TAGS', () => {
   }
   for (const t of TAGS) assert.ok(imports.includes(`'${modules[t]}'`), `${t}: ${modules[t]} is not imported`);
 });
+
+test('sanitized HTML: a javascript: URL is refused the way the browser reads it, SVG animate and set go', () => {
+  const { render } = setup({
+    HTML: '<a id="a1" href="java\tscript:alert(1)">t</a><a id="a2" href="\u0001javascript:alert(1)">c</a>'
+      + '<a id="a3" href="JaVaScRiPt:alert(1)">u</a><a id="a4" href="https://abap2ui5.github.io/">ok</a>'
+      + '<svg><a id="a5"><animate attributeName="href" values="javascript:alert(1)"/><set attributeName="href" to="javascript:alert(1)"/><text>x</text></a></svg>',
+  });
+  const { host } = render(viewOf('<FormattedText htmlText="{/HTML}"/>'));
+  for (const id of ['a1', 'a2', 'a3']) assert.equal(host.querySelector(`#${id}`).getAttribute('href'), null, id);
+  assert.equal(host.querySelector('#a4').getAttribute('href'), 'https://abap2ui5.github.io/');
+  assert.equal(host.querySelectorAll('animate, set').length, 0);
+});
+
+test('Link: an href the browser reads as javascript: is not set', () => {
+  const { render } = setup({ URL: 'java\nscript:alert(1)', OK: '/sap/bc/z2ui5' });
+  const { host } = render(viewOf('<Link text="a" href="{/URL}"/><Link text="b" href="{/OK}"/>'));
+  const [bad, good] = host.querySelectorAll('ui5-link');
+  assert.equal(bad.getAttribute('href'), null);
+  assert.equal(good.getAttribute('href'), '/sap/bc/z2ui5');
+});
