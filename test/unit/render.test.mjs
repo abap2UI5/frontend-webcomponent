@@ -223,3 +223,26 @@ test('Link: an href the browser reads as javascript: is not set', () => {
   assert.equal(bad.getAttribute('href'), null);
   assert.equal(good.getAttribute('href'), '/sap/bc/z2ui5');
 });
+
+test('<abap2ui5-app>: an app attribute set after connecting starts it, once', async () => {
+  const { defineElement } = await import('../../src/element.js');
+  defineElement('a2u-late-app');
+  const calls = [];
+  const el = document.createElement('a2u-late-app');
+  el.transport = {
+    roundtrip: async (body) => {
+      calls.push(body);
+      return { ok: true, status: 200, body: JSON.stringify({ S_FRONT: { ID: '1', APP: 'Z2UI5_CL_X' } }) };
+    },
+    endSession() {},
+  };
+  el.setAttribute('endpoint', '/sap/bc/z2ui5');
+  document.body.appendChild(el);
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(calls.length, 0);
+  el.setAttribute('app', 'Z2UI5_CL_X');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].S_FRONT.SEARCH, '?app_start=Z2UI5_CL_X');
+  el.remove();
+});
