@@ -246,3 +246,44 @@ test('<abap2ui5-app>: an app attribute set after connecting starts it, once', as
   assert.equal(calls[0].S_FRONT.SEARCH, '?app_start=Z2UI5_CL_X');
   el.remove();
 });
+
+test('<abap2ui5-app>: endpoint and app set together start once; removed before the microtask, nothing starts', async () => {
+  const { defineElement } = await import('../../src/element.js');
+  defineElement('a2u-late-both');
+  const make = (calls) => {
+    const el = document.createElement('a2u-late-both');
+    el.transport = {
+      roundtrip: async (body) => {
+        calls.push(body);
+        return { ok: true, status: 200, body: JSON.stringify({ S_FRONT: { ID: '1', APP: 'Z2UI5_CL_X' } }) };
+      },
+      endSession() {},
+    };
+    document.body.appendChild(el);
+    return el;
+  };
+  const both = [];
+  const a = make(both);
+  a.setAttribute('endpoint', '/sap/bc/z2ui5');
+  a.setAttribute('app', 'Z2UI5_CL_X');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(both.length, 1);
+  a.remove();
+  const gone = [];
+  const b = make(gone);
+  b.setAttribute('endpoint', '/sap/bc/z2ui5');
+  b.setAttribute('app', 'Z2UI5_CL_X');
+  b.remove();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(gone.length, 0);
+});
+
+test('sanitized HTML keeps relative, mailto:, tel: and data:image URLs', async () => {
+  const { isScriptUrl } = await import('../../src/render/controls/common.js');
+  for (const ok of ['docs/page.html', '/sap/bc/z2ui5?x=1', '#top', 'javascript-guide.html', 'mailto:a@b.example', 'tel:+4930123', 'data:image/png;base64,AAAA', 'https://abap2ui5.github.io/']) {
+    assert.equal(isScriptUrl(ok), false, ok);
+  }
+  for (const bad of ['javascript:x', ' JAVASCRIPT:x', 'java\tscript:x', '\u0000javascript:x', 'vbscript:x', 'data:text/html,<b>x</b>', 'data: text/html,x']) {
+    assert.equal(isScriptUrl(bad), true, JSON.stringify(bad));
+  }
+});
