@@ -58,6 +58,25 @@ test('the standalone page passes extra URL parameters and reports a backend erro
   await expect(err.locator('.a2u-error-text')).not.toBeEmpty();
 });
 
+test('the standalone page takes ?endpoint= only on its own origin', async ({ page }) => {
+  await page.route('**://cdn.jsdelivr.net/**', (r) => r.abort());
+  const foreign = [];
+  await page.route((url) => url.hostname === 'evil.example', (r) => {
+    foreign.push(r.request().url());
+    return r.abort();
+  });
+  const start = page.waitForRequest((r) => r.method() === 'POST');
+  await page.goto('/?endpoint=https://evil.example/sap/bc/z2ui5/&app_start=Z2UI5_CL_SMP_APP_493');
+  expect(new URL((await start).url()).origin).toBe(new URL(page.url()).origin);
+  await expect(page.locator('abap2ui5-app [data-ui5-control="sap.m.Title"]')).toHaveText('Hello World');
+  expect(foreign).toEqual([]);
+
+  // a path on this server is taken
+  const own = page.waitForRequest((r) => r.method() === 'POST');
+  await page.goto('/?endpoint=/sap/bc/z2ui5/&app_start=Z2UI5_CL_SMP_APP_493');
+  expect(new URL((await own).url()).pathname).toBe('/sap/bc/z2ui5/');
+});
+
 test('embedded: routing leaves the host URL alone, reports abap2ui5-route, the host navigates back', async ({ page }) => {
   await page.route('**://cdn.jsdelivr.net/**', (r) => r.abort());
   // a host page of its own (served by the test, same origin as the bundle)

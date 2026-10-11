@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **The standalone page takes `?endpoint=` only on its own origin**
+  (`index.html`): a link with `?endpoint=https://another.host/` ran that
+  host's views under this page's address - a logon form, say - and sent
+  what the user typed there. Another origin is refused with a console error,
+  and the page talks to the service of its `abap2ui5-endpoint` meta tag.
 - **A removed or restarted `<abap2ui5-app>` drops the answer still under
   way**: the session ends with the element, and a roundtrip it overtook no
   longer renders, runs its follow-up actions - a `REDIRECT`, the URL hash
