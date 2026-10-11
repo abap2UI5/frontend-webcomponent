@@ -9,6 +9,11 @@
   `abap2ui5-response` / `abap2ui5-error` for an app that is gone (an `app`
   attribute changed while the start was running). A queued wire or a hash
   change is not sent after the end either.
+- **No `resize` listener left behind on the window**: every start of
+  `<abap2ui5-app>` - a boot, a restart on a changed attribute - added one
+  for the `device>` model and never took it off, which kept the ended
+  session's model and the bindings of its view alive and recomputed them on
+  every resize. The session's end removes it.
 - **Sanitized HTML drops custom elements** (FormattedText, `core:HTML`): an
   element whose name has a hyphen, and the `is` attribute, are removed with
   the scripts. Markup from backend data - a model value a user typed - could

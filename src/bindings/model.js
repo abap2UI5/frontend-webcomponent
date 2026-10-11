@@ -103,11 +103,21 @@ export function createDeviceModel(win = globalThis.window) {
     };
   };
   compute();
+  // the window outlives the session: dispose() takes the listener off again,
+  // or every element boot and restart left one behind, holding its model
+  // (and through it the bindings of a view long gone) and recomputing on
+  // every resize
+  m.dispose = () => {};
   if (win && win.addEventListener) {
-    win.addEventListener('resize', () => {
+    const onResize = () => {
       compute();
       m.notify();
-    });
+    };
+    win.addEventListener('resize', onResize);
+    m.dispose = () => {
+      if (win.removeEventListener) win.removeEventListener('resize', onResize);
+      m.listeners.clear();
+    };
   }
   return m;
 }

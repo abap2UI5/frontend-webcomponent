@@ -309,6 +309,7 @@ export class Session {
   end() {
     this.ended = true;
     this.queued = null;
+    this.namedModels.device.dispose();
     if (this.transport.endSession) this.transport.endSession();
   }
 }

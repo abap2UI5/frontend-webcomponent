@@ -177,6 +177,23 @@ test('end: an answer still under way is dropped, nothing is sent afterwards', as
   }
 });
 
+test('end: the device model lets go of the window', () => {
+  // every boot and restart of the element makes a session; the window's
+  // resize listener of an ended one must not stay behind
+  const listeners = new Set();
+  const win = {
+    innerWidth: 1280,
+    innerHeight: 800,
+    navigator: { userAgent: '' },
+    addEventListener: (type, fn) => listeners.add(fn),
+    removeEventListener: (type, fn) => listeners.delete(fn),
+  };
+  const s = new Session({ transport: { roundtrip: async () => ({}) }, location: () => ({}), window: win });
+  assert.equal(listeners.size, 1);
+  s.end();
+  assert.equal(listeners.size, 0);
+});
+
 test('transport: sap-contextid kept, CSRF handshake re-sends the body once', async () => {
   const calls = [];
   const res = (status, headers = {}, body = '{}') => ({ ok: status < 300, status, headers: new Map(Object.entries(headers)), text: async () => body });
