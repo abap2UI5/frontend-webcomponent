@@ -150,12 +150,23 @@ export class Router {
       hashEvent: null,
       appHash: '',
       pending: null,
+      // the in-app entries the browser stands IN FRONT of: a push raises
+      // it, a Back over one lowers it, a Forward raises it again - what
+      // back() reads in place of UI5's History.getPreviousHash()
       pushCount: 0,
     };
+    // the app hashes this router wrote or saw, in history order, and the
+    // position the browser stands on - which way a hash change went (the
+    // UI5 frontend's core/Router.js trail)
+    this.trail = [];
+    this.trailPos = -1;
     this.unlisten = null;
   }
 
   start() {
+    // the entry the page was loaded on is the first of the trail - a Back
+    // onto it is a step back, not a new entry
+    if (this.trailPos < 0) this.trailWrite(this.url.get(), false);
     if (!this.unlisten) this.unlisten = this.url.listen((raw) => this.onHashChanged(raw));
   }
 
@@ -170,6 +181,54 @@ export class Router {
     return raw ? `#${raw}` : undefined;
   }
 
+  /* ----------------------------------------------------------- trail --- */
+
+  /** A write: a push cuts the forward part off, as the browser does; a replace rewrites the entry. */
+  trailWrite(raw, replace) {
+    const h = appHashOf(raw);
+    if (replace && this.trailPos >= 0) {
+      this.trail[this.trailPos] = h;
+      return;
+    }
+    this.trail = this.trail.slice(0, this.trailPos + 1);
+    this.trail.push(h);
+    this.trailPos = this.trail.length - 1;
+  }
+
+  /**
+   * Move along the trail to the hash the browser now stands on: 'back',
+   * 'forward', or '' - for the echo of a write, and for a hash nowhere on
+   * the trail (a manual edit, a bookmark: a new entry). The neighbours
+   * decide first; a hash on both sides stays '' (as UI5's History has it).
+   */
+  trailMove(raw) {
+    const h = appHashOf(raw);
+    const pos = this.trailPos;
+    if (this.trail[pos] === h) return '';
+    const prev = pos > 0 && this.trail[pos - 1] === h;
+    const next = this.trail[pos + 1] === h;
+    if (prev) {
+      this.trailPos = pos - 1;
+      return next ? '' : 'back';
+    }
+    if (next) {
+      this.trailPos = pos + 1;
+      return 'forward';
+    }
+    const before = pos > 0 ? this.trail.lastIndexOf(h, pos - 1) : -1;
+    if (before >= 0) {
+      this.trailPos = before;
+      return 'back';
+    }
+    const after = this.trail.indexOf(h, pos + 1);
+    if (after >= 0) {
+      this.trailPos = after;
+      return 'forward';
+    }
+    this.trailWrite(raw, false);
+    return '';
+  }
+
   /* --------------------------------------------------------- writing --- */
 
   /** Write an app hash, keeping the launchpad shell part of the raw hash. */
@@ -178,13 +237,16 @@ export class Router {
     const app = String(appHash || '');
     const raw = shell ? (app ? `${shell}&/${app.replace(/^\/+/, '')}` : shell) : app;
     if (push) this.state.pushCount += 1;
+    this.trailWrite(raw, !push);
     this.url.write(raw, push);
   }
 
   /** The app's own suffix appended to the raw hash (hash_set without a listener). */
   writeSuffix(suffix, push) {
+    const raw = `${this.url.get()}${suffix}`;
     if (push) this.state.pushCount += 1;
-    this.url.write(`${this.url.get()}${suffix}`, push);
+    this.trailWrite(raw, !push);
+    this.url.write(raw, push);
   }
 
   /* ------------------------------------------------------ the response --- */
@@ -292,6 +354,14 @@ export class Router {
 
   onHashChanged(raw) {
     const state = this.state;
+    // A Back steps off a pushed entry, a Forward onto one again: back()
+    // reads the in-app entries BEHIND the browser, not the pushes ever made
+    // - counting pushes only, a cold deep link that pushed once and went
+    // Back called history.back( ) on the next HASH_BACK and left the page,
+    // the case its fallback exists for. The echoes of writes move nothing.
+    const direction = this.trailMove(raw);
+    if (direction === 'back') state.pushCount = Math.max(0, state.pushCount - 1);
+    else if (direction === 'forward') state.pushCount += 1;
     if (!state.navRouting) {
       if (!state.hashEvent) return;
       const appHash = appHashOf(raw);

@@ -61,7 +61,19 @@ export class Abap2UI5App extends HTMLElement {
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
-    if (oldValue === newValue || !this._app) return;
+    if (oldValue === newValue) return;
+    if (!this._app) {
+      // not running yet - connected without endpoint or app, which the host
+      // sets later: boot once it has both. In a microtask, so that a parsed
+      // element whose attributes arrive one by one boots once, from
+      // connectedCallback
+      if (['endpoint', 'app'].includes(name)) {
+        queueMicrotask(() => {
+          if (!this._app && this.isConnected) this._boot();
+        });
+      }
+      return;
+    }
     if (name === 'theme') this._app.setTheme(newValue);
     else if (['endpoint', 'app', 'params', 'credentials', 'csrf', 'routing'].includes(name)) this.restart();
   }

@@ -203,3 +203,87 @@ test('webcomponents.js imports the module of every tag in TAGS', () => {
   }
   for (const t of TAGS) assert.ok(imports.includes(`'${modules[t]}'`), `${t}: ${modules[t]} is not imported`);
 });
+
+test('sanitized HTML: a javascript: URL is refused the way the browser reads it, SVG animate and set go', () => {
+  const { render } = setup({
+    HTML: '<a id="a1" href="java\tscript:alert(1)">t</a><a id="a2" href="\u0001javascript:alert(1)">c</a>'
+      + '<a id="a3" href="JaVaScRiPt:alert(1)">u</a><a id="a4" href="https://abap2ui5.github.io/">ok</a>'
+      + '<svg><a id="a5"><animate attributeName="href" values="javascript:alert(1)"/><set attributeName="href" to="javascript:alert(1)"/><text>x</text></a></svg>',
+  });
+  const { host } = render(viewOf('<FormattedText htmlText="{/HTML}"/>'));
+  for (const id of ['a1', 'a2', 'a3']) assert.equal(host.querySelector(`#${id}`).getAttribute('href'), null, id);
+  assert.equal(host.querySelector('#a4').getAttribute('href'), 'https://abap2ui5.github.io/');
+  assert.equal(host.querySelectorAll('animate, set').length, 0);
+});
+
+test('Link: an href the browser reads as javascript: is not set', () => {
+  const { render } = setup({ URL: 'java\nscript:alert(1)', OK: '/sap/bc/z2ui5' });
+  const { host } = render(viewOf('<Link text="a" href="{/URL}"/><Link text="b" href="{/OK}"/>'));
+  const [bad, good] = host.querySelectorAll('ui5-link');
+  assert.equal(bad.getAttribute('href'), null);
+  assert.equal(good.getAttribute('href'), '/sap/bc/z2ui5');
+});
+
+test('<abap2ui5-app>: an app attribute set after connecting starts it, once', async () => {
+  const { defineElement } = await import('../../src/element.js');
+  defineElement('a2u-late-app');
+  const calls = [];
+  const el = document.createElement('a2u-late-app');
+  el.transport = {
+    roundtrip: async (body) => {
+      calls.push(body);
+      return { ok: true, status: 200, body: JSON.stringify({ S_FRONT: { ID: '1', APP: 'Z2UI5_CL_X' } }) };
+    },
+    endSession() {},
+  };
+  el.setAttribute('endpoint', '/sap/bc/z2ui5');
+  document.body.appendChild(el);
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(calls.length, 0);
+  el.setAttribute('app', 'Z2UI5_CL_X');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].S_FRONT.SEARCH, '?app_start=Z2UI5_CL_X');
+  el.remove();
+});
+
+test('<abap2ui5-app>: endpoint and app set together start once; removed before the microtask, nothing starts', async () => {
+  const { defineElement } = await import('../../src/element.js');
+  defineElement('a2u-late-both');
+  const make = (calls) => {
+    const el = document.createElement('a2u-late-both');
+    el.transport = {
+      roundtrip: async (body) => {
+        calls.push(body);
+        return { ok: true, status: 200, body: JSON.stringify({ S_FRONT: { ID: '1', APP: 'Z2UI5_CL_X' } }) };
+      },
+      endSession() {},
+    };
+    document.body.appendChild(el);
+    return el;
+  };
+  const both = [];
+  const a = make(both);
+  a.setAttribute('endpoint', '/sap/bc/z2ui5');
+  a.setAttribute('app', 'Z2UI5_CL_X');
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(both.length, 1);
+  a.remove();
+  const gone = [];
+  const b = make(gone);
+  b.setAttribute('endpoint', '/sap/bc/z2ui5');
+  b.setAttribute('app', 'Z2UI5_CL_X');
+  b.remove();
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(gone.length, 0);
+});
+
+test('sanitized HTML keeps relative, mailto:, tel: and data:image URLs', async () => {
+  const { isScriptUrl } = await import('../../src/render/controls/common.js');
+  for (const ok of ['docs/page.html', '/sap/bc/z2ui5?x=1', '#top', 'javascript-guide.html', 'mailto:a@b.example', 'tel:+4930123', 'data:image/png;base64,AAAA', 'https://abap2ui5.github.io/']) {
+    assert.equal(isScriptUrl(ok), false, ok);
+  }
+  for (const bad of ['javascript:x', ' JAVASCRIPT:x', 'java\tscript:x', '\u0000javascript:x', 'vbscript:x', 'data:text/html,<b>x</b>', 'data: text/html,x']) {
+    assert.equal(isScriptUrl(bad), true, JSON.stringify(bad));
+  }
+});

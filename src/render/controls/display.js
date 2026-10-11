@@ -3,7 +3,7 @@
  */
 import { define } from '../registry.js';
 import {
-  VALUE_STATE, BUTTON_DESIGN, iconName, enabled, text, icon, sanitizeHtml, cssSize,
+  VALUE_STATE, BUTTON_DESIGN, iconName, enabled, text, icon, sanitizeHtml, isScriptUrl, cssSize,
 } from './common.js';
 
 const TITLE_LEVEL = { H1: 'H1', H2: 'H2', H3: 'H3', H4: 'H4', H5: 'H5', H6: 'H6', Auto: 'H2' };
@@ -66,7 +66,7 @@ define('sap.m.Link', {
   tag: 'ui5-link',
   props: {
     text,
-    href: { set: (el, v) => (v && !/^\s*javascript:/i.test(v) ? el.setAttribute('href', v) : el.removeAttribute('href')) },
+    href: { set: (el, v) => (v && !isScriptUrl(v) ? el.setAttribute('href', v) : el.removeAttribute('href')) },
     target: { attr: 'target' },
     enabled,
     emphasized: { set: (el, v, api) => { if (api.toBool(v)) el.setAttribute('design', 'Emphasized'); } },
