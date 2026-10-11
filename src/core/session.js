@@ -89,6 +89,7 @@ export class Session {
     this.lastRequest = null;
     this.lastResponse = null;
     this.roundtrips = 0;
+    this.ended = false;
   }
 
   on(type, fn) {
@@ -210,6 +211,8 @@ export class Session {
   }
 
   async send(body, carried, flags = {}) {
+    // an ended session sends nothing more (a pending hash change, a timer)
+    if (this.ended) return null;
     this.setBusy(true, { silent: !!flags.noBusy });
     this.lastRequest = body;
     this.emit('request', body);
@@ -220,6 +223,9 @@ export class Session {
       } catch (e) {
         throw new ProtocolError(`Network error: ${(e && e.message) || e}`, { retry: true });
       }
+      // the answer of a roundtrip the end overtook (the element removed, or
+      // restarted with another app): nothing of it is adopted, shown or run
+      if (this.ended) return null;
       if (!res.ok) throw new ProtocolError(httpErrorText(res.status, res.body), { status: res.status, retry: res.status >= 502 });
       let json;
       try {
@@ -236,14 +242,18 @@ export class Session {
       this.adopt(json);
       return json;
     } catch (e) {
+      if (this.ended) return null;
       this.emit('error', e);
       throw e;
     } finally {
-      this.setBusy(false);
-      if (this.queued) {
-        const q = this.queued;
-        this.queued = null;
-        this.fire(q.slot, q.event, q.args, q.flags).catch(() => {});
+      if (this.ended) this.busy = false;
+      else {
+        this.setBusy(false);
+        if (this.queued) {
+          const q = this.queued;
+          this.queued = null;
+          this.fire(q.slot, q.event, q.args, q.flags).catch(() => {});
+        }
       }
     }
   }
@@ -291,7 +301,15 @@ export class Session {
     this.emit('response', { state: next, changed, custom, router, routerOptions, appChanged: !!(next.app && next.app !== prev.app && prev.app), response });
   }
 
+  /**
+   * The end of the session (the element removed or restarted): the backend
+   * session is ended, and nothing of it reaches the page any more - an
+   * answer still under way is dropped, nothing is sent from here on.
+   */
   end() {
+    this.ended = true;
+    this.queued = null;
+    this.namedModels.device.dispose();
     if (this.transport.endSession) this.transport.endSession();
   }
 }
