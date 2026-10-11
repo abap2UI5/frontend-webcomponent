@@ -70,7 +70,7 @@ export function isScriptUrl(value) {
 /* the attributes that hold a URL the browser follows or loads */
 const URL_ATTRIBUTES = ['href', 'src', 'xlink:href', 'action', 'formaction'];
 
-/** Strip what must not run: scripts, event handlers, javascript: URLs. */
+/** Strip what must not run: scripts, event handlers, javascript: URLs, custom elements. */
 export function sanitizeHtml(doc, html) {
   const tpl = doc.createElement('template');
   tpl.innerHTML = String(html ?? '');
@@ -78,14 +78,19 @@ export function sanitizeHtml(doc, html) {
     for (const child of [...node.children]) {
       const tag = child.tagName.toLowerCase();
       // animate and set write an attribute of their parent - an SVG <a>'s
-      // href - after this check has passed it
-      if (['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'animate', 'set'].includes(tag)) {
+      // href - after this check has passed it. A custom element (a name
+      // with a hyphen) runs the code its page defined for it on insertion:
+      // <abap2ui5-app endpoint app> would start an app from any server in
+      // the page - FormattedText's markup never names one, nor UI5's own
+      if (['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'animate', 'set'].includes(tag)
+        || tag.includes('-')) {
         child.remove();
         continue;
       }
       for (const a of [...child.attributes]) {
         const n = a.name.toLowerCase();
-        if (n.startsWith('on') || (URL_ATTRIBUTES.includes(n) && isScriptUrl(a.value))) {
+        // is="..." makes a built-in element a customized one - the same as above
+        if (n.startsWith('on') || n === 'is' || (URL_ATTRIBUTES.includes(n) && isScriptUrl(a.value))) {
           child.removeAttribute(a.name);
         }
       }

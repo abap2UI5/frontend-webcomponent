@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- **Sanitized HTML drops custom elements** (FormattedText, `core:HTML`): an
+  element whose name has a hyphen, and the `is` attribute, are removed with
+  the scripts. Markup from backend data - a model value a user typed - could
+  place `<abap2ui5-app endpoint="https://..." app="...">` in the page, which
+  the element's own definition then started: the app of any server, rendered
+  inside this one, free to `REDIRECT` the page.
+- **`javascript:` URLs are refused the way the browser reads them**, in
+  sanitized HTML (`href`, `src`, `xlink:href`, `action`, `formaction`) and in
+  `sap.m.Link` `href`: `java<TAB>script:` or a control character in front
+  passed the old check and ran on a click. SVG `animate` and `set`, which
+  write their parent's `href` after the check, are dropped.
+- **`<abap2ui5-app>` starts when `app` or `endpoint` arrives after it was
+  connected** - a host that sets the attribute later (a framework binding)
+  got an empty element and no error.
+- **`HASH_BACK` keeps the page after the browser went back over every
+  push**: the router counts the in-app entries behind the browser (the
+  trail of the hashes it wrote and saw), not every push of the page load -
+  a cold deep link that pushed once and went Back left the page on the next
+  `HASH_BACK` instead of showing its fallback route.
 - **Profile** re-copied from protocol 604d267 (spec revision 0.3): the
   additive `actions.api` / `actions.wire` split; `scripts/profile-actions.mjs`
   reads `actions.api` too.
