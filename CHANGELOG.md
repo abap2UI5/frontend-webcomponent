@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **A removed or restarted `<abap2ui5-app>` drops the answer still under
+  way**: the session ends with the element, and a roundtrip it overtook no
+  longer renders, runs its follow-up actions - a `REDIRECT`, the URL hash
+  of `routing="hash"`, `SET_TITLE` - or shows "App Terminated" and fires
+  `abap2ui5-response` / `abap2ui5-error` for an app that is gone (an `app`
+  attribute changed while the start was running). A queued wire or a hash
+  change is not sent after the end either.
 - **Sanitized HTML drops custom elements** (FormattedText, `core:HTML`): an
   element whose name has a hyphen, and the `is` attribute, are removed with
   the scripts. Markup from backend data - a model value a user typed - could

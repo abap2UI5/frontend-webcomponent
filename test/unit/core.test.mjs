@@ -136,6 +136,47 @@ test('busy: a second event is dropped, a queue-last wire is sent afterwards', as
   assert.deepEqual(sent, ['start', 'SLOW', 'TYPE2']);
 });
 
+test('end: an answer still under way is dropped, nothing is sent afterwards', async () => {
+  // the element removed or restarted with another app while a roundtrip
+  // runs: its answer must not render, run follow-up actions (a REDIRECT, the
+  // URL hash) or show an error for an app that is gone
+  for (const late of [answer('D2', { system: [view('MAIN')], custom: [['MESSAGE_TOAST', 'show', 'late']] }), new Error('offline')]) {
+    let release;
+    const gate = new Promise((r) => { release = r; });
+    const sent = [];
+    const t = {
+      roundtrip: async (body) => {
+        sent.push(body.S_FRONT.EVENT || 'start');
+        if (body.S_FRONT.EVENT === 'SLOW') {
+          await gate;
+          if (late instanceof Error) throw late;
+          return { ok: true, status: 200, body: JSON.stringify(late) };
+        }
+        return { ok: true, status: 200, body: JSON.stringify(answer('D1', { system: [view('MAIN')], model: {} })) };
+      },
+      ended: 0,
+      endSession() { this.ended += 1; },
+    };
+    const s = session(t);
+    await s.start('Z');
+    const seen = [];
+    s.on('response', (r) => seen.push(r));
+    s.on('error', (e) => seen.push(e));
+    const slow = s.fire('MAIN', 'SLOW');
+    await s.fire('MAIN', 'TYPE', [], { queueLast: true });
+    s.end();
+    release();
+    assert.equal(await slow, null);
+    await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(seen, [], 'no response, no error after the end');
+    assert.equal(s.state.id, 'D1');
+    assert.equal(s.busy, false);
+    assert.equal(await s.fire('MAIN', 'AFTER'), null);
+    assert.deepEqual(sent, ['start', 'SLOW'], 'neither the queued wire nor a later one is sent');
+    assert.equal(t.ended, 1);
+  }
+});
+
 test('transport: sap-contextid kept, CSRF handshake re-sends the body once', async () => {
   const calls = [];
   const res = (status, headers = {}, body = '{}') => ({ ok: status < 300, status, headers: new Map(Object.entries(headers)), text: async () => body });
