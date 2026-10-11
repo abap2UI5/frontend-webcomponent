@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Sanitized HTML drops custom elements** (FormattedText, `core:HTML`): an
+  element whose name has a hyphen, and the `is` attribute, are removed with
+  the scripts. Markup from backend data - a model value a user typed - could
+  place `<abap2ui5-app endpoint="https://..." app="...">` in the page, which
+  the element's own definition then started: the app of any server, rendered
+  inside this one, free to `REDIRECT` the page.
 - **Profile** re-copied from protocol 604d267 (spec revision 0.3): the
   additive `actions.api` / `actions.wire` split; `scripts/profile-actions.mjs`
   reads `actions.api` too.

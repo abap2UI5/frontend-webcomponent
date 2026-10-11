@@ -216,6 +216,21 @@ test('sanitized HTML: a javascript: URL is refused the way the browser reads it,
   assert.equal(host.querySelectorAll('animate, set').length, 0);
 });
 
+test('sanitized HTML: custom elements go - no <abap2ui5-app> from backend data starts an app', async () => {
+  const { defineElement } = await import('../../src/element.js');
+  defineElement('a2u-sanitized-app');
+  const { render } = setup({
+    HTML: '<p id="p1">text</p><a2u-sanitized-app endpoint="https://example.com/z2ui5" app="Z2UI5_CL_X"></a2u-sanitized-app>'
+      + '<abap2ui5-app endpoint="/x" app="Y"></abap2ui5-app><ui5-link href="/x">l</ui5-link><button id="b1" is="a2u-button">b</button>',
+  });
+  const { host } = render(viewOf('<FormattedText htmlText="{/HTML}"/><core:HTML content="{/HTML}"/>'));
+  assert.equal(host.querySelectorAll('a2u-sanitized-app, abap2ui5-app').length, 0);
+  // ui5-link is gone from the sanitized markup; the view's own controls stay
+  assert.equal([...host.querySelectorAll('ui5-link')].length, 0);
+  assert.equal(host.querySelectorAll('#p1').length, 2);
+  for (const b of host.querySelectorAll('#b1')) assert.equal(b.getAttribute('is'), null);
+});
+
 test('Link: an href the browser reads as javascript: is not set', () => {
   const { render } = setup({ URL: 'java\nscript:alert(1)', OK: '/sap/bc/z2ui5' });
   const { host } = render(viewOf('<Link text="a" href="{/URL}"/><Link text="b" href="{/OK}"/>'));
