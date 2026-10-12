@@ -11,7 +11,6 @@
 import { define } from '../registry.js';
 import { VALUE_STATE, iconName, text } from './common.js';
 
-const META = Symbol.for('abap2ui5-wc.meta');
 /*
  * growing / growingThreshold (default 20) / growingScrollToLoad /
  * growingTriggerText: the first `threshold` rows of the bound items render,
@@ -51,7 +50,7 @@ define('sap.m.Table', {
     const table = api.el('ui5-table', { class: 'a2u-table-control', 'overflow-mode': 'Popin' });
     wrap.appendChild(table);
     const noData = api.el('div', { slot: 'noData', class: 'a2u-nodata' });
-    api.bind(a.noDataText ?? 'No data', (v) => { noData.textContent = v ?? ''; });
+    api.bind(a.noDataText ?? api.t('noData'), (v) => { noData.textContent = v ?? ''; });
     table.appendChild(noData);
 
     // columns -> the header row
@@ -211,7 +210,7 @@ define('sap.m.List', {
     const groups = api.renderer.groups(node, { defaultAggregation: 'items' });
     if (a.headerText !== undefined) api.bind(a.headerText, (v) => (v ? el.setAttribute('header-text', v) : el.removeAttribute('header-text')));
     if (a.footerText !== undefined) api.bind(a.footerText, (v) => (v ? el.setAttribute('footer-text', v) : el.removeAttribute('footer-text')));
-    api.bind(a.noDataText ?? 'No data', (v) => el.setAttribute('no-data-text', v ?? ''));
+    api.bind(a.noDataText ?? api.t('noData'), (v) => el.setAttribute('no-data-text', v ?? ''));
     if (a.mode !== undefined) api.bind(a.mode, (v) => el.setAttribute('selection-mode', LIST_MODE[v] || 'None'));
     if (a.inset !== undefined) api.bind(a.inset, (v) => el.classList.toggle('a2u-inset', api.toBool(v)));
     if (groups.has('headerToolbar')) api.aggregation(node, 'headerToolbar', (k) => k.forEach((x) => { x.setAttribute('slot', 'header'); el.appendChild(x); }), { groups });
@@ -353,4 +352,4 @@ define('sap.m.GroupHeaderListItem', {
   status: 'basic',
 });
 
-export { META, text };
+export { text };

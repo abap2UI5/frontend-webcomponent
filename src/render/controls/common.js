@@ -67,6 +67,9 @@ export function isScriptUrl(value) {
   return /^(javascript|vbscript):/.test(v) || /^data:\s*text\/html/.test(v);
 }
 
+/** An image source a view may set: http(s), a data image, or a relative/absolute path - no script URL. */
+export const isImageUrl = (v) => !!v && !isScriptUrl(v) && /^(https?:|data:image\/|\/|\.|[\w-]+[/.])/i.test(String(v));
+
 /* the attributes that hold a URL the browser follows or loads */
 const URL_ATTRIBUTES = ['href', 'src', 'xlink:href', 'action', 'formaction'];
 

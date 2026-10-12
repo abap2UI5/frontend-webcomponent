@@ -156,16 +156,58 @@ export function formatAmount(parts, typeName, formatOptions = {}, locale = undef
   return o.showMeasure === false || !code ? text : `${text} ${code}`;
 }
 
+/*
+ * The symbols a locale's numbers are written with - what the control shows
+ * (Intl formats with them) and what a user types back. Read off
+ * Intl.NumberFormat.formatToParts once per locale; the browser's locale
+ * when none is given, as formatValue uses it.
+ */
+const symbolsCache = new Map();
+export function numberSymbols(locale = undefined) {
+  const key = locale || '';
+  let sym = symbolsCache.get(key);
+  if (sym) return sym;
+  sym = { group: ',', decimal: '.', minus: '-' };
+  try {
+    for (const part of new Intl.NumberFormat(locale, { useGrouping: true }).formatToParts(-1234567.5)) {
+      if (part.type === 'group') sym.group = part.value;
+      else if (part.type === 'decimal') sym.decimal = part.value;
+      else if (part.type === 'minusSign') sym.minus = part.value;
+    }
+  } catch {
+    /* an unknown locale: the English symbols */
+  }
+  symbolsCache.set(key, sym);
+  return sym;
+}
+
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** A number as the locale writes it -> a JavaScript number string ("1.234,56" -> "1234.56"), or null. */
+export function normalizeNumberText(text, locale = undefined) {
+  const sym = numberSymbols(locale);
+  let s = String(text ?? '').trim();
+  if (!s) return '';
+  // every kind of space is a group separator somewhere (fr: narrow no-break space)
+  s = s.replace(/[\s\u00a0\u202f]/g, '');
+  s = s.replace(new RegExp(escapeRe(sym.minus), 'g'), '-').replace(/\u2212/g, '-');
+  if (sym.group !== sym.decimal) s = s.replace(new RegExp(escapeRe(sym.group), 'g'), '');
+  if (sym.decimal !== '.') s = s.replace(new RegExp(escapeRe(sym.decimal), 'g'), '.');
+  return s;
+}
+
 /* Back from the control into the model: what the type's parseValue would
- * write - a number for the number types (the model keeps its JSON type), the
- * source pattern for a date type with a `source`, the text otherwise. */
-export function parseValue(text, typeName, formatOptions = {}) {
+ * write - a number for the number types (the model keeps its JSON type),
+ * read with the symbols of the locale it was shown in (formatValue formats
+ * with the same one), the source pattern for a date type with a `source`,
+ * the text otherwise. */
+export function parseValue(text, typeName, formatOptions = {}, locale = undefined) {
   const t = shortType(typeName);
   const o = formatOptions || {};
   if (NUMBER_TYPES.has(t)) {
-    const s = String(text ?? '').replace(/[\s\u00a0]/g, '').replace(/,(?=\d{3}(\D|$))/g, '');
+    const s = normalizeNumberText(text, locale);
     if (s === '') return t === 'Integer' || t === 'Float' ? 0 : null;
-    const n = INTEGER_TYPES.has(t) ? parseInt(s, 10) : parseFloat(s.replace(',', '.'));
+    const n = INTEGER_TYPES.has(t) ? parseInt(s, 10) : parseFloat(s);
     return Number.isNaN(n) ? text : n;
   }
   if (DATE_TYPES.has(t) && o.source && o.source.pattern && o.pattern) {

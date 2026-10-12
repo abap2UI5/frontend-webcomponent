@@ -1,7 +1,6 @@
 {
   "name": "@abap2ui5/frontend-webcomponent",
   "version": "0.1.0",
-  "private": true,
   "description": "An alternative abap2UI5 frontend: renders portable-profile views with UI5 Web Components, standalone or embedded as <abap2ui5-app> in any web app.",
   "keywords": [
     "abap2ui5",
@@ -18,14 +17,19 @@
   },
   "main": "dist/abap2ui5-wc.js",
   "module": "dist/abap2ui5-wc.js",
+  "types": "types/index.d.ts",
   "exports": {
-    ".": "./dist/abap2ui5-wc.js",
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./dist/abap2ui5-wc.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
   "files": [
     "dist/",
     "src/",
+    "types/",
     "README.md",
     "LICENSE",
     "CHANGELOG.md"

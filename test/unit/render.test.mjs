@@ -302,3 +302,84 @@ test('sanitized HTML keeps relative, mailto:, tel: and data:image URLs', async (
     assert.equal(isScriptUrl(bad), true, JSON.stringify(bad));
   }
 });
+
+test('Tree: rebuilt when the structure changes, not when a title of the same length does', () => {
+  const { render, models } = setup({ T: [{ TITLE: 'A', KIDS: [{ TITLE: 'x', KIDS: [] }] }, { TITLE: 'B', KIDS: [] }] });
+  const { host } = render(viewOf('<Tree items="{/T}"><StandardTreeItem title="{TITLE}"/></Tree>'));
+  const titles = () => [...host.querySelectorAll('ui5-tree-item')].map((x) => x.getAttribute('text'));
+  assert.deepEqual(titles(), ['A', 'x', 'B']);
+  assert.equal(host.querySelector('ui5-tree-item').querySelector('ui5-tree-item').getAttribute('text'), 'x', 'nested under A');
+  const first = host.querySelector('ui5-tree-item');
+  models[''].replace({ T: [{ TITLE: 'C', KIDS: [{ TITLE: 'y', KIDS: [] }] }, { TITLE: 'B', KIDS: [] }] });
+  assert.deepEqual(titles(), ['C', 'y', 'B']);
+  assert.equal(host.querySelector('ui5-tree-item'), first, 'same structure: refreshed in place');
+  // the same JSON length, another structure: the child moved from A to B
+  models[''].replace({ T: [{ TITLE: 'C', KIDS: [] }, { TITLE: 'B', KIDS: [{ TITLE: 'y', KIDS: [] }] }] });
+  assert.deepEqual(titles(), ['C', 'B', 'y']);
+  assert.equal(host.querySelectorAll('ui5-tree-item')[1].querySelector('ui5-tree-item').getAttribute('text'), 'y', 'nested under B');
+});
+
+test('busy and blocked: a busy control sits in an active ui5-busy-indicator', () => {
+  const { render, models } = setup({ BUSY: true, BLOCKED: false });
+  const { host, ids } = render(viewOf('<Table id="t" busy="{/BUSY}" busyIndicatorDelay="0"/><Button id="b" blocked="{/BLOCKED}" text="x"/>'));
+  const wrap = host.querySelector('ui5-busy-indicator');
+  assert.ok(wrap, 'the wrapper');
+  assert.equal(wrap.hasAttribute('active'), true);
+  assert.equal(wrap.getAttribute('delay'), '0');
+  assert.ok(wrap.querySelector('ui5-table'));
+  assert.equal(ids.get('t').classList.contains('a2u-table'), true, 'the id names the control, not the wrapper');
+  const b = host.querySelector('ui5-button');
+  assert.equal(b.classList.contains('a2u-blocked'), false);
+  models[''].replace({ BUSY: false, BLOCKED: true });
+  assert.equal(wrap.hasAttribute('active'), false);
+  assert.equal(b.classList.contains('a2u-blocked'), true);
+});
+
+test('element binding of a named model moves that model\'s context only', () => {
+  const { render } = setup({ NAME: 'n' });
+  const { host } = render(viewOf('<VBox binding="{device>/system}"><Text text="{device>phone}"/><Text text="{/NAME}"/></VBox>'));
+  const [phone, name] = host.querySelectorAll('ui5-text');
+  assert.equal(phone.textContent, 'false');
+  assert.equal(name.textContent, 'n');
+});
+
+test('the mappers\' own texts follow the renderer\'s language', async () => {
+  const { textsFor } = await import('../../src/ui/texts.js');
+  const r = new Renderer({ document, registry, report() {}, onEvent() {}, texts: textsFor('de') });
+  const models = { '': new Model('MAIN', {}), device: createDeviceModel(window) };
+  const { nodes } = r.renderXml(viewOf('<SearchField/><List/><Page/><foo:Bar xmlns:foo="x.y"/>'), { slot: 'MAIN', models });
+  const host = document.createElement('div');
+  host.append(...nodes);
+  assert.equal(host.querySelector('ui5-input').getAttribute('placeholder'), 'Suchen');
+  assert.equal(host.querySelector('ui5-list').getAttribute('no-data-text'), 'Keine Daten');
+  assert.equal(host.querySelector('.a2u-nav-back').getAttribute('tooltip'), 'Zurück');
+  assert.match(host.querySelector('.a2u-unsupported').textContent, /nicht unterstütztes Control x\.y\.Bar/);
+});
+
+test('Avatar: an image source is checked like Image\'s', () => {
+  const { render } = setup({ BAD: 'javascript:alert(1)', OK: 'https://h/a.png' });
+  const { host } = render(viewOf('<Avatar src="{/BAD}"/><Avatar src="{/OK}"/>'));
+  const [bad, good] = host.querySelectorAll('ui5-avatar');
+  assert.equal(bad.querySelector('img'), null);
+  assert.equal(good.querySelector('img').getAttribute('src'), 'https://h/a.png');
+});
+
+test('the error dialog: Retry for a retryable error, one dialog at a time, gone on close', async () => {
+  const { FrontendApp } = await import('../../src/ui/app.js');
+  const { ProtocolError } = await import('../../src/core/session.js');
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const app = new FrontendApp({ root, host: root, endpoint: '/sap/bc/z2ui5', transport: { roundtrip: async () => ({ ok: true, status: 200, body: '{"S_FRONT":{"ID":"1","APP":"Z"}}' }), endSession() {} }, language: 'de' });
+  app.session.lastRequest = { S_FRONT: {} };
+  app.showError(new ProtocolError('HTTP 503', { status: 503, retry: true }));
+  app.showError(new ProtocolError('boom', { status: 500 }));
+  const dialogs = root.querySelectorAll('.a2u-error');
+  assert.equal(dialogs.length, 1, 'the newer error replaces the older dialog');
+  assert.deepEqual([...dialogs[0].querySelectorAll('ui5-button')].map((b) => b.textContent), ['Neu starten', 'Schließen']);
+  dialogs[0].dispatchEvent(new CustomEvent('close'));
+  assert.equal(root.querySelectorAll('.a2u-error').length, 0, 'Escape removes it');
+  app.showError(new ProtocolError('Network error: offline', { retry: true }));
+  assert.deepEqual([...root.querySelectorAll('.a2u-error ui5-button')].map((b) => b.textContent), ['Wiederholen', 'Neu starten', 'Schließen']);
+  app.destroy();
+  root.remove();
+});

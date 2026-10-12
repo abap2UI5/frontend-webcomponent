@@ -129,3 +129,18 @@ test('a model push keeps the edits not yet sent', () => {
   m.replace({ A: 7 });
   assert.deepEqual(m.data, { A: 7 });
 });
+
+test('typed numbers round-trip in the locale they are shown in', async () => {
+  const { normalizeNumberText } = await import('../../src/bindings/types.js');
+  const T = 'sap.ui.model.type.Float';
+  for (const locale of ['en-US', 'de-DE', 'de-CH', 'fr-FR', 'en-IN']) {
+    const shown = formatValue(1234567.5, T, { decimals: 2 }, locale);
+    assert.equal(parseValue(shown, T, { decimals: 2 }, locale), 1234567.5, `${locale}: ${shown}`);
+    assert.equal(parseValue(formatValue(-12.5, T, {}, locale), T, {}, locale), -12.5, locale);
+  }
+  assert.equal(parseValue('1.234,56', T, {}, 'de-DE'), 1234.56);
+  assert.equal(parseValue('1.234', 'sap.ui.model.type.Integer', {}, 'de-DE'), 1234);
+  assert.equal(parseValue('abc', T, {}, 'de-DE'), 'abc', 'not a number: the text stays');
+  assert.equal(parseValue('', T, {}, 'de-DE'), 0);
+  assert.equal(normalizeNumberText('1 234,5', 'fr-FR'), '1234.5');
+});

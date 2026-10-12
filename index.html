@@ -18,9 +18,10 @@
     el.setAttribute('endpoint', url.searchParams.get('endpoint') || document.querySelector('meta[name=abap2ui5-endpoint]').content);
     el.setAttribute('app', url.searchParams.get('app_start') || 'Z2UI5_CL_UI5_APP_HI_WORLD');
     const rest = new URLSearchParams(url.search);
-    for (const k of ['app_start', 'endpoint', 'sap-theme']) rest.delete(k);
+    for (const k of ['app_start', 'endpoint', 'sap-theme', 'sap-language']) rest.delete(k);
     if ([...rest].length) el.setAttribute('params', rest.toString());
     if (url.searchParams.get('sap-theme')) el.setAttribute('theme', url.searchParams.get('sap-theme'));
+    if (url.searchParams.get('sap-language')) el.setAttribute('language', url.searchParams.get('sap-language'));
     el.setAttribute('standalone', '');
     document.body.appendChild(el);
   </script>
