@@ -231,6 +231,20 @@ test('sanitized HTML: custom elements go - no <abap2ui5-app> from backend data s
   for (const b of host.querySelectorAll('#b1')) assert.equal(b.getAttribute('is'), null);
 });
 
+test('sanitized HTML: <style> goes with its rules - backend markup cannot restyle the view', () => {
+  const { render } = setup({
+    HTML: '<style>ui5-button { display: none }</style><p id="p1" style="color: red">text</p>'
+      + '<svg><style>* { visibility: hidden }</style><text>x</text></svg>',
+  });
+  const { host } = render(viewOf('<FormattedText htmlText="{/HTML}"/><core:HTML content="{/HTML}"/><Button text="b"/>'));
+  assert.equal(host.querySelectorAll('style').length, 0);
+  assert.ok(!host.innerHTML.includes('display: none') && !host.innerHTML.includes('visibility'));
+  // the style attribute stays, as in UI5's FormattedText whitelist
+  const ps = host.querySelectorAll('#p1');
+  assert.equal(ps.length, 2);
+  for (const p of ps) assert.equal(p.getAttribute('style'), 'color: red');
+});
+
 test('Link: an href the browser reads as javascript: is not set', () => {
   const { render } = setup({ URL: 'java\nscript:alert(1)', OK: '/sap/bc/z2ui5' });
   const { host } = render(viewOf('<Link text="a" href="{/URL}"/><Link text="b" href="{/OK}"/>'));

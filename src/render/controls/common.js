@@ -73,7 +73,7 @@ export const isImageUrl = (v) => !!v && !isScriptUrl(v) && /^(https?:|data:image
 /* the attributes that hold a URL the browser follows or loads */
 const URL_ATTRIBUTES = ['href', 'src', 'xlink:href', 'action', 'formaction'];
 
-/** Strip what must not run: scripts, event handlers, javascript: URLs, custom elements. */
+/** Strip what must not run: scripts, event handlers, javascript: URLs, custom elements, style sheets. */
 export function sanitizeHtml(doc, html) {
   const tpl = doc.createElement('template');
   tpl.innerHTML = String(html ?? '');
@@ -84,8 +84,12 @@ export function sanitizeHtml(doc, html) {
       // href - after this check has passed it. A custom element (a name
       // with a hyphen) runs the code its page defined for it on insertion:
       // <abap2ui5-app endpoint app> would start an app from any server in
-      // the page - FormattedText's markup never names one, nor UI5's own
-      if (['script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'animate', 'set'].includes(tag)
+      // the page - FormattedText's markup never names one, nor UI5's own.
+      // A <style> (HTML or SVG) applies to the whole shadow root, not to the
+      // markup it came with: it could restyle or hide every control of the
+      // view. UI5's FormattedText whitelist has no <style> either, only the
+      // style attribute, which stays
+      if (['script', 'style', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'animate', 'set'].includes(tag)
         || tag.includes('-')) {
         child.remove();
         continue;

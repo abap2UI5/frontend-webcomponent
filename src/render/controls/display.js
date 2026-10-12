@@ -305,7 +305,7 @@ define('sap.ui.core.HTML', {
     return el;
   },
   status: 'basic',
-  note: 'content sanitized: no script, no event handlers',
+  note: 'content sanitized: no script, no style element, no event handlers',
 });
 
 define('sap.ui.core.InvisibleText', { render: () => null, status: 'full' });
