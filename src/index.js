@@ -16,5 +16,6 @@ export { Renderer } from './render/renderer.js';
 export { define as defineControl, list as listControls } from './render/registry.js';
 export { compileProperty, compileAggregation } from './bindings/binding.js';
 export { Model } from './bindings/model.js';
+export { defineTexts, textsFor } from './ui/texts.js';
 
 defineElement();

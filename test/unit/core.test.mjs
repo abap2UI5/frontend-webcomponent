@@ -244,3 +244,36 @@ test('START_TIMER fires its event once, a new roundtrip cancels it', async () =>
   await new Promise((r) => setTimeout(r, 30));
   assert.equal(fired.length, 1);
 });
+
+test('retry re-sends the same body and confirms its edits on success', async () => {
+  const t = scripted([
+    answer('D1', { system: [view('MAIN')], model: { NAME: 'x' } }),
+    new Error('offline'),
+    answer('D2', { model: { NAME: 'y' } }),
+  ]);
+  const s = session(t);
+  await s.start('Z_APP');
+  s.models.MAIN.set('/NAME', 'y');
+  await assert.rejects(s.fire('MAIN', 'SAVE'), (e) => e.retry);
+  assert.equal(s.models.MAIN.edited.size, 1, 'the edit is still unconfirmed');
+  const res = await s.retry();
+  assert.equal(res.S_FRONT.ID, 'D2');
+  assert.deepEqual(t.sent[2], t.sent[1], 'the same body');
+  assert.equal(s.models.MAIN.edited.size, 0, 'confirmed by the retry');
+  assert.equal(s.state.id, 'D2');
+  assert.equal(await session(scripted([])).retry(), null, 'nothing to re-send');
+});
+
+test('texts: the language bundle, the English fallback, placeholders', async () => {
+  const { textsFor, resolveLanguage, defineTexts } = await import('../../src/ui/texts.js');
+  assert.equal(textsFor('de-AT')('action.CANCEL'), 'Abbrechen');
+  assert.equal(textsFor('fr')('action.CANCEL'), 'Cancel');
+  assert.equal(textsFor('en')('diagnostics.many', 3), '3 unsupported items - this frontend renders the portable profile');
+  assert.equal(textsFor('de')('no.such.key'), 'no.such.key');
+  defineTexts('fr', { 'action.CANCEL': 'Annuler' });
+  assert.equal(textsFor('fr-CA')('action.CANCEL'), 'Annuler');
+  assert.equal(textsFor('fr')('action.OK'), 'OK', 'the rest falls back to English');
+  assert.equal(resolveLanguage('de', { documentElement: { lang: 'fr' } }, { language: 'it' }), 'de');
+  assert.equal(resolveLanguage(undefined, { documentElement: { lang: 'fr' } }, { language: 'it' }), 'fr');
+  assert.equal(resolveLanguage(undefined, { documentElement: { lang: '' } }, { language: 'it' }), 'it');
+});

@@ -19,10 +19,18 @@
  *                   standalone) | events (never touch the host's URL: every hash the app
  *                   would write is an abap2ui5-route event, and the host reports a hash
  *                   change of its own with navigate() - the default embedded) | off
+ *   language        the language of the frontend's own texts (message box buttons, "No
+ *                   data", the error dialog) and of the web components: 'de', 'en-US', ...
+ *                   (default: the page's lang, else the browser's)
  *
- * Properties: headers (extra request headers, e.g. Authorization),
- * transport (a custom { roundtrip(body), endSession() } - set before connect),
- * session, diagnostics (read-only); methods restart(), navigate(hash).
+ * endpoint, app, params, credentials, csrf, routing, standalone and language
+ * restart the element when changed; theme, diagnostics and document-title
+ * apply at once.
+ *
+ * Properties: headers (extra request headers, e.g. Authorization - a new
+ * object assigned later is used from the next request on), transport (a
+ * custom { roundtrip(body), endSession() } - set before connect), session,
+ * diagnostics (read-only); methods restart(), navigate(hash).
  *
  * Events (bubbling, composed): abap2ui5-response, abap2ui5-request,
  * abap2ui5-message, abap2ui5-title, abap2ui5-error, abap2ui5-diagnostic,
@@ -30,7 +38,7 @@
  */
 import { FrontendApp } from './ui/app.js';
 
-const ATTRS = ['endpoint', 'app', 'params', 'theme', 'credentials', 'csrf', 'diagnostics', 'document-title', 'standalone', 'routing'];
+const ATTRS = ['endpoint', 'app', 'params', 'theme', 'credentials', 'csrf', 'diagnostics', 'document-title', 'standalone', 'routing', 'language'];
 
 export class Abap2UI5App extends HTMLElement {
   static get observedAttributes() {
@@ -40,8 +48,17 @@ export class Abap2UI5App extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
-    this.headers = {};
-    this.transport = null;
+    // the one object the transport reads at every request: a later
+    // assignment copies into it, so it takes effect without a restart
+    this._headers = {};
+    // set on the element before it was upgraded (a framework's property
+    // binding): an own property would shadow the accessor below
+    if (Object.prototype.hasOwnProperty.call(this, 'headers')) {
+      const early = this.headers;
+      delete this.headers;
+      this.headers = early;
+    }
+    if (!Object.prototype.hasOwnProperty.call(this, 'transport')) this.transport = null;
     this._app = null;
   }
 
@@ -75,7 +92,18 @@ export class Abap2UI5App extends HTMLElement {
       return;
     }
     if (name === 'theme') this._app.setTheme(newValue);
-    else if (['endpoint', 'app', 'params', 'credentials', 'csrf', 'routing'].includes(name)) this.restart();
+    else if (name === 'diagnostics') this._app.setDiagnostics(newValue !== 'off');
+    else if (name === 'document-title') this._app.o.documentTitle = newValue !== null;
+    else this.restart();
+  }
+
+  get headers() {
+    return this._headers;
+  }
+
+  set headers(value) {
+    for (const k of Object.keys(this._headers)) delete this._headers[k];
+    Object.assign(this._headers, value || {});
   }
 
   get session() {
@@ -115,12 +143,13 @@ export class Abap2UI5App extends HTMLElement {
       transport: this.transport || undefined,
       credentials: this.getAttribute('credentials') || 'same-origin',
       csrf: this.getAttribute('csrf') || 'auto',
-      headers: this.headers,
+      headers: this._headers,
       standalone: this.hasAttribute('standalone'),
       routing: this.getAttribute('routing') || undefined,
       documentTitle: this.hasAttribute('document-title'),
       search: this.getAttribute('params') || '',
       diagnostics: this.getAttribute('diagnostics') !== 'off',
+      language: this.getAttribute('language') || undefined,
     });
     const theme = this.getAttribute('theme');
     if (theme) this._app.setTheme(theme);

@@ -21,6 +21,7 @@
 import { parseViewXml, isAggregation, controlName } from '../vendor/agent/viewxml.mjs';
 import { compileProperty, compileAggregation, aggregationRows } from '../bindings/binding.js';
 import { META, metaOf, readWire, computeArgs } from './wires.js';
+import { textsFor } from '../ui/texts.js';
 
 export class Scope {
   constructor(parent = null) {
@@ -77,12 +78,14 @@ export class Renderer {
    * @param {object} o.registry          render/registry.js
    * @param {Function} o.report          ({ kind, detail, control? }) => void
    * @param {Function} o.onEvent         ({ slot, wire, args, el }) => void
+   * @param {Function} [o.texts]         t(key, ...args) of ui/texts.js - the mappers' own texts
    */
-  constructor({ document, registry, report, onEvent }) {
+  constructor({ document, registry, report, onEvent, texts }) {
     this.doc = document;
     this.registry = registry;
     this.report = report;
     this.onEvent = onEvent;
+    this.t = texts || textsFor('en');
   }
 
   /** Render a view or fragment XML for `slot` -> { nodes, scope, ids }. */
@@ -119,8 +122,12 @@ export class Renderer {
     if (node.attrs.binding !== undefined) {
       const b = compiled(node.attrs.binding);
       if (b.kind === 'path') {
-        const target = b.part.relative ? `${ctx.path}/${b.part.path}` : b.part.path;
-        c = { ...ctx, path: target.replace(/\/+/g, '/') };
+        const model = b.part.model || '';
+        const base = model ? (ctx.namedPaths || {})[model] || '' : ctx.path;
+        const target = (b.part.relative ? `${base}/${b.part.path}` : b.part.path).replace(/\/+/g, '/');
+        // a named model's element binding sets the context of that model
+        // only: `{device>/system}` moves device> paths, not the view model's
+        c = model ? { ...ctx, namedPaths: { ...(ctx.namedPaths || {}), [model]: target } } : { ...ctx, path: target };
       } else {
         this.report({ kind: 'binding', detail: `element binding ${node.attrs.binding}`, control: name });
       }
@@ -136,7 +143,32 @@ export class Renderer {
     }
     if (!el) return null;
     this.common(el, node, mapper, api, c, name);
-    return el;
+    return this.busyWrap(el, node, api);
+  }
+
+  /**
+   * `busy` / `blocked` of any control (sap.ui.core.Control): a busy control
+   * sits in a ui5-busy-indicator (delay and size from busyIndicatorDelay /
+   * busyIndicatorSize), a blocked one takes no input.
+   */
+  busyWrap(el, node, api) {
+    const a = node.attrs;
+    if (a.blocked !== undefined) {
+      api.bind(a.blocked, (v) => {
+        const on = toBool(v);
+        el.classList.toggle('a2u-blocked', on);
+        el.inert = on;
+      });
+    }
+    if (a.busy === undefined) return el;
+    const wrap = this.doc.createElement('ui5-busy-indicator');
+    wrap.className = 'a2u-busy-wrap';
+    wrap.setAttribute('delay', a.busyIndicatorDelay !== undefined ? String(Number(api.evaluate(a.busyIndicatorDelay)) || 0) : '1000');
+    const size = a.busyIndicatorSize !== undefined ? String(api.evaluate(a.busyIndicatorSize)) : 'Medium';
+    wrap.setAttribute('size', { Small: 'S', Medium: 'M', Large: 'L', Auto: 'M', Section: 'M' }[size] || 'M');
+    wrap.appendChild(el);
+    api.bind(a.busy, (v) => wrap.toggleAttribute('active', toBool(v)));
+    return wrap;
   }
 
   /** The visible stand-in for a control this frontend has no mapper for. */
@@ -145,7 +177,7 @@ export class Renderer {
     const box = this.doc.createElement('div');
     box.className = 'a2u-unsupported';
     box.setAttribute('data-a2u-unsupported', name);
-    box.textContent = `unsupported control ${name}`;
+    box.textContent = this.t('unsupported', name);
     // its children may still be portable: render them below, so content is not lost
     const kids = this.doc.createElement('div');
     kids.className = 'a2u-unsupported-content';
@@ -323,6 +355,8 @@ export class Renderer {
       renderer: r,
       report: (kind, detail) => r.report({ kind, detail, control }),
       toBool,
+      /** A text of the frontend's own (ui/texts.js) in the frontend's language. */
+      t: (key, ...args) => r.t(key, ...args),
 
       /** Evaluate a property value (literal or binding) now. */
       evaluate(raw, c = ctx) {

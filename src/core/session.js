@@ -87,6 +87,8 @@ export class Session {
     this.appStack = [];
     this.listeners = { response: new Set(), busy: new Set(), error: new Set(), request: new Set() };
     this.lastRequest = null;
+    this.lastCarried = null;
+    this.lastFlags = null;
     this.lastResponse = null;
     this.roundtrips = 0;
     this.ended = false;
@@ -210,11 +212,24 @@ export class Session {
     this.emit('response', { state: next, changed: [slot], custom: [], response: null, local: true });
   }
 
+  /**
+   * Send the last request once more, the SAME body (the UI5 frontend's
+   * error overlay offers it for a roundtrip that never reached the backend
+   * or met a 502/503): the edits the body carried are still unconfirmed,
+   * the answer is adopted as any other. Nothing to re-send -> null.
+   */
+  async retry() {
+    if (!this.lastRequest || this.busy) return null;
+    return this.send(this.lastRequest, this.lastCarried, this.lastFlags || {});
+  }
+
   async send(body, carried, flags = {}) {
     // an ended session sends nothing more (a pending hash change, a timer)
     if (this.ended) return null;
     this.setBusy(true, { silent: !!flags.noBusy });
     this.lastRequest = body;
+    this.lastCarried = carried;
+    this.lastFlags = flags;
     this.emit('request', body);
     let res;
     try {

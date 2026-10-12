@@ -93,6 +93,7 @@ define('sap.m.SearchField', {
     const ic = api.el('ui5-icon', { slot: 'icon', name: 'search', mode: 'Interactive' });
     el.appendChild(ic);
     api.renderer.applyAttributes(el, this, node, api, { skip: ['search'] });
+    if (node.attrs.placeholder === undefined) el.setAttribute('placeholder', api.t('search'));
     if (node.attrs.search) {
       const params = () => ({ query: el.value, clearButtonPressed: false, refreshButtonPressed: false });
       api.wire(el, 'search', { on: 'keydown', filter: (ev) => ev.key === 'Enter', params });
@@ -102,7 +103,7 @@ define('sap.m.SearchField', {
   },
   props: {
     value: { prop: 'value', convert: str, twoWay: { event: 'change', live: 'input', read: (el) => el.value } },
-    placeholder: { attr: 'placeholder', default: 'Search' },
+    placeholder: { attr: 'placeholder' },
     enabled,
     width: { style: 'width' },
     showSearchButton: 'ignore',

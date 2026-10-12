@@ -51,7 +51,9 @@ two-way binding of every value-like property (the edit goes into the model
 and the next event's delta, exactly as the UI5 frontend sends it), typed
 bindings for display (`sap.ui.model.type` / `odata.type` Integer, Float,
 Decimal, Date, Time, DateTime, Currency with `formatOptions` such as
-`decimals`, `pattern`, `source.pattern`) and back (numbers stay numbers),
+`decimals`, `pattern`, `source.pattern`) and back (numbers stay numbers,
+read with the symbols of the locale they are shown in: `1.234,56` in a
+German browser),
 expression bindings in the profile's grammar (`${...}`, operators, `? :`,
 `.length`, `Math.max/min/abs/round/floor/ceil`, `toUpperCase/toLowerCase/
 trim/indexOf/includes/startsWith/endsWith`) evaluated by a small parser - no
@@ -113,13 +115,21 @@ once. [`examples/plain.html`](examples/plain.html) runs two apps side by side
 | `document-title` | `SET_TITLE` also sets `document.title` (always on in the standalone page) |
 | `standalone` | the element owns the page: the URL hash is the app's (routes, app state, Back/Forward) and travels with every request |
 | `routing` | the URL hash: `hash` (read and write the page's hash - the default with `standalone`), `events` (never touch the host's URL, emit `abap2ui5-route` - the default embedded), `off` |
+| `language` | the language of the frontend's own texts (message box buttons and titles, "No data", the error dialog - English and German built in, `defineTexts()` adds one) and of the web components; default: the page's `lang`, else the browser's. The standalone page takes `?sap-language=` |
 
-Properties: `headers` (extra request headers - `Authorization`, `sap-client`),
-`transport` (your own `{ roundtrip(body), endSession() }`), `session`,
-`diagnostics`; methods `restart()`, `navigate(hash)`. Events (bubbling,
-composed): `abap2ui5-response`, `abap2ui5-request`, `abap2ui5-message`,
-`abap2ui5-title`, `abap2ui5-error`, `abap2ui5-diagnostic`,
-`abap2ui5-route`.
+`endpoint`, `app`, `params`, `credentials`, `csrf`, `routing`, `standalone`
+and `language` restart the element when changed; `theme`, `diagnostics` and
+`document-title` apply at once.
+
+Properties: `headers` (extra request headers - `Authorization`, `sap-client`;
+a new object assigned later is used from the next request on),
+`transport` (your own `{ roundtrip(body), endSession() }` - set before the
+element connects), `session`, `diagnostics`; methods `restart()`,
+`navigate(hash)`. Events (bubbling, composed): `abap2ui5-response`,
+`abap2ui5-request`, `abap2ui5-message`, `abap2ui5-title`, `abap2ui5-error`
+(`detail.retry` says whether the error dialog offers *Retry*),
+`abap2ui5-diagnostic`, `abap2ui5-route`. TypeScript hosts get the element,
+its event map and the exports typed from `types/index.d.ts`.
 
 ### The URL hash
 
@@ -320,7 +330,7 @@ Portable profile v1: **65 of 65** controls mapped (42 full, 23 basic).
 | sap.m.List | `ui5-list` | basic | items (bound or static), headerText, mode, itemPress, selectionChange, delete, growing (threshold, trigger text, scroll to load); no grouping |
 | sap.m.StandardListItem | `ui5-li` | basic | title, description, icon, info, infoState, highlight, type, selected; no counter/avatar |
 | sap.m.CustomListItem | `ui5-li-custom` | full |  |
-| sap.m.Tree | `ui5-tree` | basic | nested array binding, headerText, mode, headerToolbar, toggleOpenState/itemPress/selectionChange |
+| sap.m.Tree | `ui5-tree` | basic | nested array binding (sorter, length, startIndex at the top level), headerText, mode, headerToolbar, toggleOpenState/itemPress/selectionChange |
 | sap.m.StandardTreeItem | `ui5-tree-item` | full |  |
 | sap.m.Dialog | `ui5-dialog` + `ui5-bar` footer | basic | title, icon, state, content size, buttons/begin/endButton/footer, custom header, afterClose; type Message not distinguished |
 | sap.m.Popover | `ui5-popover` | basic | title, placement, modal, content size, footer, afterClose |
