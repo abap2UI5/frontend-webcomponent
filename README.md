@@ -299,7 +299,7 @@ Portable profile v1: **65 of 65** controls mapped (42 full, 23 basic).
 | sap.m.ObjectStatus | styled `<span>` + `ui5-icon` | basic | icon, title, text, state, inverted, active; no stateAnnouncementText |
 | sap.m.Link | `ui5-link` | full |  |
 | sap.m.ObjectIdentifier | HTML (+ `ui5-link` when titleActive) | basic | title, text, titleActive/titlePress |
-| sap.ui.core.HTML | HTML/CSS | basic | content sanitized: no script, no event handlers |
+| sap.ui.core.HTML | HTML/CSS | basic | content sanitized: no script, no style element, no event handlers |
 | sap.ui.core.Icon | `ui5-icon` | full |  |
 | sap.m.ObjectNumber | HTML/CSS | basic | number, unit, state, emphasized |
 | sap.tnt.InfoLabel | `ui5-tag` + `ui5-icon` | full |  |

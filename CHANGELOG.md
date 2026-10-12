@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **Backend markup can no longer restyle the whole view**: FormattedText,
+  `core:HTML` and the error dialog's details kept a `<style>` element, and
+  its rules applied to the entire shadow root - `ui5-button { display: none }`
+  in one text hid every button. `<style>` (HTML and SVG) is now removed with
+  its content, as UI5's FormattedText whitelist does; the `style` attribute
+  stays.
 - **The standalone page takes `?endpoint=` only on its own origin**
   (`index.html`): a link with `?endpoint=https://another.host/` ran that
   host's views under this page's address - a logon form, say - and sent
