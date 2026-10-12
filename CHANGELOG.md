@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **The standalone page takes `?endpoint=` only on its own origin**
+  (`index.html`): a link with `?endpoint=https://another.host/` ran that
+  host's views under this page's address - a logon form, say - and sent
+  what the user typed there. Another origin is refused with a console error,
+  and the page talks to the service of its `abap2ui5-endpoint` meta tag.
+- **No backend context is left behind by an answer that came too late**:
+  an element removed or restarted while its first roundtrip was under way
+  ended nothing (there was no `sap-contextid` yet), and the late answer of
+  a stateful backend then opened a context that stayed until its timeout.
+  That context is ended with `sap-terminate` as soon as the answer names it.
 - **Typed numbers are read in the locale they are shown in**: a Float,
   Decimal or Integer binding formats with the browser's locale, and now
   parses with its symbols too - `1.234,56` typed in a German browser went

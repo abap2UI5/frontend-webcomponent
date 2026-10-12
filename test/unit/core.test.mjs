@@ -213,6 +213,33 @@ test('transport: sap-contextid kept, CSRF handshake re-sends the body once', asy
   assert.equal(isValidContextId(''), false);
 });
 
+test('transport: a context the answer opens after endSession() is ended too', async () => {
+  const calls = [];
+  let answer;
+  const res = (status, headers = {}) => ({ ok: status < 300, status, headers: new Map(Object.entries(headers)), text: async () => '{}' });
+  const tr = createFetchTransport({
+    endpoint: 'http://h/x',
+    fetchImpl: (url, init) => {
+      calls.push(init);
+      if (init.method === 'POST') return new Promise((resolve) => { answer = resolve; });
+      return Promise.resolve(res(200));
+    },
+  });
+  // the start is under way, no context yet - the element is removed
+  const start = tr.roundtrip({ S_FRONT: {} });
+  await new Promise((r) => setTimeout(r, 0));
+  tr.endSession();
+  assert.equal(calls.length, 1);
+  // the stateful backend opens a context with the late answer
+  answer(res(200, { 'sap-contextid': 'SID9' }));
+  await start;
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].method, 'HEAD');
+  assert.equal(calls[1].headers['sap-terminate'], 'session');
+  assert.equal(calls[1].headers['sap-contextid'], 'SID9');
+  assert.equal(tr.state.contextId, null);
+});
+
 test('frontend actions: toast template, box, title, URL rules, unsupported reported', () => {
   const ui = { log: [], toast: (t, o) => ui.log.push(['toast', t, o.duration]), box: (ty, t, o) => ui.log.push(['box', ty, t, o.actions]), setTitle: (t) => ui.log.push(['title', t]), openUrl: (u) => ui.log.push(['open', u]), busy() {}, theme() {}, focus() {}, navigate() {}, back() {} };
   const reports = [];

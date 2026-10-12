@@ -15,7 +15,9 @@
  *     a backend on another origin that authenticates by cookie;
  *   - `headers` extra request headers (an Authorization header, sap-client).
  *
- * endSession() is the best-effort HEAD with `sap-terminate: session`.
+ * endSession() is the best-effort HEAD with `sap-terminate: session`. A
+ * roundtrip still under way then gets its answer later; a context that
+ * answer opens is ended the same way, instead of being kept for nobody.
  */
 
 /* the UI5 frontend's rule (core/Lib.js isValidContextId) */
@@ -34,6 +36,7 @@ export function createFetchTransport({
     contextId: null,
     csrfToken: csrf && !['auto', 'fetch', 'none'].includes(csrf) ? csrf : '',
     fetchedOnce: false,
+    ended: false,
   };
 
   const requestHeaders = () => {
@@ -70,22 +73,32 @@ export function createFetchTransport({
     let res = await post();
     if (csrf !== 'none' && tokenRequired(res) && (await fetchToken(sig))) res = await post();
     const ctxId = res.headers && res.headers.get('sap-contextid');
-    if (isValidContextId(ctxId)) state.contextId = ctxId;
+    if (isValidContextId(ctxId)) {
+      // the session ended while this request was under way (the first one
+      // of a stateful backend opens the context): end that context too
+      if (state.ended) terminate(ctxId);
+      else state.contextId = ctxId;
+    }
     return { status: res.status, ok: res.ok, body: await res.text(), bytes: text.length };
   }
 
-  function endSession() {
-    if (!isValidContextId(state.contextId)) return;
+  function terminate(contextId) {
     try {
       fetchImpl(endpoint, {
         method: 'HEAD',
         keepalive: true,
         credentials,
-        headers: { 'sap-terminate': 'session', 'sap-contextid': state.contextId, 'sap-contextid-accept': 'header', ...headers },
+        headers: { 'sap-terminate': 'session', 'sap-contextid': contextId, 'sap-contextid-accept': 'header', ...headers },
       }).catch(() => {});
     } catch {
       /* the page is going away */
     }
+  }
+
+  function endSession() {
+    state.ended = true;
+    if (!isValidContextId(state.contextId)) return;
+    terminate(state.contextId);
     state.contextId = null;
   }
 
