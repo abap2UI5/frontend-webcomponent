@@ -24,10 +24,14 @@ import { Renderer } from '../render/renderer.js';
 import registry from '../render/registry.js';
 import '../render/controls/index.js';
 import { CSS } from './styles.js';
+import { textsFor, resolveLanguage } from './texts.js';
+import { sanitizeHtml } from '../render/controls/common.js';
 
-const BOX_TITLE = { confirm: 'Confirmation', error: 'Error', warning: 'Warning', success: 'Success', information: 'Information', alert: 'Alert', show: '' };
+const BOX_TYPES = ['confirm', 'error', 'warning', 'success', 'information', 'alert'];
 const BOX_STATE = { error: 'Negative', warning: 'Critical', success: 'Positive', information: 'Information', confirm: 'None', alert: 'None', show: 'None' };
-const ACTION_TEXT = { OK: 'OK', CANCEL: 'Cancel', YES: 'Yes', NO: 'No', ABORT: 'Abort', RETRY: 'Retry', IGNORE: 'Ignore', CLOSE: 'Close', DELETE: 'Delete' };
+const ACTIONS = ['OK', 'CANCEL', 'YES', 'NO', 'ABORT', 'RETRY', 'IGNORE', 'CLOSE', 'DELETE'];
+/* the diagnostics the panel lists (the rest goes to the console and the event only) */
+const SEVERE = ['control', 'action', 'formatter', 'event', 'event-arg', 'binding', 'expression', 'type', 'slot'];
 
 export class FrontendApp {
   /**
@@ -45,6 +49,8 @@ export class FrontendApp {
    *                                         emit abap2ui5-route instead - the default embedded), 'off'
    * @param {string} [o.search]              extra start parameters (`&a=b`)
    * @param {boolean} [o.diagnostics]        show the diagnostics panel
+   * @param {string} [o.language]            the language of the frontend's own texts (ui/texts.js) -
+   *                                         and of the web components; the page's `lang` when not given
    */
   constructor(o) {
     this.o = o;
@@ -53,6 +59,8 @@ export class FrontendApp {
     this.host = o.host;
     this.diag = new Map();
     this.slots = {};
+    this.t = textsFor(resolveLanguage(o.language, this.doc, this.win && this.win.navigator));
+    if (o.language) this.setLanguage(o.language);
     this.mount();
     const transport = o.transport || createFetchTransport({
       endpoint: new URL(o.endpoint, this.win.location.href).href,
@@ -80,6 +88,7 @@ export class FrontendApp {
       registry,
       report: (d) => this.report(d),
       onEvent: (e) => this.onWire(e),
+      texts: this.t,
     });
     this.actions = createActions({
       ui: this.ui(),
@@ -236,7 +245,13 @@ export class FrontendApp {
         return;
       }
       if (options && options.methodDestroy) {
-        for (const old of (parent.querySelector('.a2u-page-content') || parent).querySelectorAll(':scope > .a2u-nested')) old.remove();
+        // the parent's content is destroyed first: the other nested slot
+        // in it goes as a slot (its bindings with it), not as a node
+        for (const old of (parent.querySelector('.a2u-page-content') || parent).querySelectorAll(':scope > .a2u-nested')) {
+          const other = old.getAttribute('data-slot');
+          if (this.slots[other] && this.slots[other].holder === old) this.removeSlot(other);
+          else old.remove();
+        }
       }
       (parent.querySelector(':scope > .a2u-page-content') || parent).appendChild(holder);
     } else {
@@ -280,7 +295,8 @@ export class FrontendApp {
       // goes locally, as the UI5 frontend's popover autoclose does
       if (!popup.__a2uClosing && slot === 'POPOVER' && this.slots.POPOVER === entry) this.session.closeSlot('POPOVER');
     });
-    requestAnimationFrame(() => { popup.open = true; });
+    // the slot may be gone before the frame (a destroy in the same response)
+    requestAnimationFrame(() => { if (!popup.__a2uClosing) popup.open = true; });
   }
 
   removeSlot(slot) {
@@ -328,7 +344,13 @@ export class FrontendApp {
         requestAnimationFrame(() => {
           el.focus();
           const inner = el.shadowRoot && el.shadowRoot.querySelector('input,textarea');
-          if (inner && start !== undefined && start !== null && start !== '') inner.setSelectionRange(Number(start), Number(end ?? start));
+          if (inner && start !== undefined && start !== null && start !== '') {
+            try {
+              inner.setSelectionRange(Number(start), Number(end ?? start));
+            } catch {
+              /* an input type without a selection (number, email) */
+            }
+          }
         });
         return undefined;
       },
@@ -357,7 +379,7 @@ export class FrontendApp {
     const dlg = d.createElement('ui5-dialog');
     dlg.className = 'a2u-messagebox';
     dlg.setAttribute('data-box-type', type);
-    dlg.setAttribute('header-text', title || BOX_TITLE[type] || '');
+    dlg.setAttribute('header-text', title || (BOX_TYPES.includes(type) ? this.t(`box.${type}`) : ''));
     dlg.setAttribute('state', BOX_STATE[type] || 'None');
     const body = d.createElement('ui5-text');
     body.className = 'a2u-box-text';
@@ -366,7 +388,10 @@ export class FrontendApp {
     if (details) {
       const det = d.createElement('div');
       det.className = 'a2u-box-details';
-      det.textContent = typeof details === 'string' ? details.replace(/<[^>]+>/g, '') : JSON.stringify(details, null, 2);
+      // a string is formatted text, as in UI5's MessageBox (sanitized like
+      // FormattedText); anything else is shown as JSON
+      if (typeof details === 'string') det.replaceChildren(sanitizeHtml(d, details));
+      else det.textContent = JSON.stringify(details, null, 2);
       dlg.appendChild(det);
     }
     const list = actions && actions.length ? actions : (type === 'confirm' ? ['OK', 'CANCEL'] : ['OK']);
@@ -384,7 +409,7 @@ export class FrontendApp {
     list.forEach((a, i) => {
       const b = d.createElement('ui5-button');
       b.setAttribute('slot', 'endContent');
-      b.textContent = ACTION_TEXT[a] || a;
+      b.textContent = ACTIONS.includes(a) ? this.t(`action.${a}`) : a;
       b.setAttribute('data-action', a);
       if (a === emphasizedAction || (!emphasizedAction && i === 0)) b.setAttribute('design', 'Emphasized');
       b.addEventListener('click', () => finish(a));
@@ -406,6 +431,16 @@ export class FrontendApp {
     }
   }
 
+  /** The language of the web components (their own texts, calendars, ...). */
+  async setLanguage(language) {
+    try {
+      const { setLanguage } = await import('@ui5/webcomponents-base/dist/config/Language.js');
+      await setLanguage(String(language));
+    } catch (e) {
+      this.report({ kind: 'action', detail: `language: ${e.message}` });
+    }
+  }
+
   setBusy(busy, silent) {
     clearTimeout(this.busyTimer);
     this.rootEl.setAttribute('data-roundtrip', busy ? 'running' : 'idle');
@@ -419,11 +454,13 @@ export class FrontendApp {
 
   showError(e) {
     console.error('[abap2ui5-wc]', e.message);
-    this.emit('abap2ui5-error', { message: e.message, status: e.status });
+    this.emit('abap2ui5-error', { message: e.message, status: e.status, retry: !!e.retry });
     const d = this.doc;
+    // one error dialog at a time: the newer error replaces the one shown
+    for (const old of this.overlayEl.querySelectorAll(':scope > .a2u-error')) old.remove();
     const dlg = d.createElement('ui5-dialog');
     dlg.className = 'a2u-error';
-    dlg.setAttribute('header-text', 'App Terminated');
+    dlg.setAttribute('header-text', this.t('error.title'));
     dlg.setAttribute('state', 'Negative');
     if (e.status && e.message !== `HTTP ${e.status}`) {
       const status = d.createElement('div');
@@ -439,20 +476,26 @@ export class FrontendApp {
     const bar = d.createElement('ui5-bar');
     bar.setAttribute('slot', 'footer');
     bar.setAttribute('design', 'Footer');
-    const restart = d.createElement('ui5-button');
-    restart.setAttribute('slot', 'endContent');
-    restart.setAttribute('design', 'Emphasized');
-    restart.textContent = 'Restart';
-    restart.addEventListener('click', () => {
-      dlg.remove();
-      this.start(this.app);
-    });
-    const close = d.createElement('ui5-button');
-    close.setAttribute('slot', 'endContent');
-    close.textContent = 'Close';
-    close.addEventListener('click', () => dlg.remove());
-    bar.append(restart, close);
+    const button = (text, design, onClick) => {
+      const b = d.createElement('ui5-button');
+      b.setAttribute('slot', 'endContent');
+      if (design) b.setAttribute('design', design);
+      b.textContent = text;
+      b.addEventListener('click', () => {
+        dlg.remove();
+        onClick();
+      });
+      return b;
+    };
+    // a roundtrip that never reached the backend, or met a 502/503: the
+    // same body once more, with the edits it carried (the UI5 frontend's
+    // error overlay offers the same)
+    if (e.retry && this.session.lastRequest) bar.appendChild(button(this.t('error.retry'), 'Emphasized', () => this.session.retry().catch(() => {})));
+    bar.appendChild(button(this.t('error.restart'), e.retry ? undefined : 'Emphasized', () => this.start(this.app)));
+    bar.appendChild(button(this.t('error.close'), undefined, () => {}));
     dlg.appendChild(bar);
+    // closed with Escape: the element goes with it
+    dlg.addEventListener('close', () => dlg.remove());
     this.overlayEl.appendChild(dlg);
     requestAnimationFrame(() => { dlg.open = true; });
   }
@@ -471,17 +514,37 @@ export class FrontendApp {
     console.warn(`[abap2ui5-wc] ${key}`);
     this.emit('abap2ui5-diagnostic', entry);
     if (this.o.diagnostics === false) return;
-    const SEVERE = ['control', 'action', 'formatter', 'event', 'event-arg', 'binding', 'expression', 'type', 'slot'];
     if (!SEVERE.includes(kind)) return;
     const li = this.doc.createElement('li');
     li.textContent = key;
     this.diagEl.querySelector('ul').appendChild(li);
     const n = this.diagEl.querySelectorAll('li').length;
-    this.diagEl.querySelector('summary').textContent = `${n} unsupported item${n === 1 ? '' : 's'} - this frontend renders the portable profile`;
+    this.diagEl.querySelector('summary').textContent = n === 1 ? this.t('diagnostics.one') : this.t('diagnostics.many', n);
     this.diagEl.hidden = false;
   }
 
   diagnostics() {
     return [...this.diag.values()];
+  }
+
+  /** Show or hide the diagnostics panel (the element's `diagnostics` attribute, changed at run time). */
+  setDiagnostics(show) {
+    this.o.diagnostics = !!show;
+    if (!show) {
+      this.diagEl.hidden = true;
+      return;
+    }
+    // the entries reported while it was off
+    this.diagEl.querySelector('ul').replaceChildren();
+    for (const entry of this.diag.values()) {
+      if (!SEVERE.includes(entry.kind)) continue;
+      const li = this.doc.createElement('li');
+      li.textContent = `${entry.kind}: ${entry.detail}`;
+      this.diagEl.querySelector('ul').appendChild(li);
+    }
+    const n = this.diagEl.querySelectorAll('li').length;
+    if (!n) return;
+    this.diagEl.querySelector('summary').textContent = n === 1 ? this.t('diagnostics.one') : this.t('diagnostics.many', n);
+    this.diagEl.hidden = false;
   }
 }

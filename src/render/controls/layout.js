@@ -69,7 +69,7 @@ define('sap.m.Page', {
     if (groups.has('customHeader')) {
       api.aggregation(node, 'customHeader', (kids) => kids.forEach((k) => { k.setAttribute('slot', 'header'); el.appendChild(k); }), { groups });
     } else if (showHeader) {
-      const nav = api.el('ui5-button', { icon: 'nav-back', design: 'Transparent', slot: 'startContent', class: 'a2u-nav-back', tooltip: 'Back' });
+      const nav = api.el('ui5-button', { icon: 'nav-back', design: 'Transparent', slot: 'startContent', class: 'a2u-nav-back', tooltip: api.t('back') });
       header.appendChild(nav);
       if (a.showNavButton !== undefined) api.bind(a.showNavButton, (v) => { nav.style.display = api.toBool(v) ? '' : 'none'; });
       else nav.style.display = 'none';

@@ -12,6 +12,42 @@
   ended nothing (there was no `sap-contextid` yet), and the late answer of
   a stateful backend then opened a context that stayed until its timeout.
   That context is ended with `sap-terminate` as soon as the answer names it.
+- **Typed numbers are read in the locale they are shown in**: a Float,
+  Decimal or Integer binding formats with the browser's locale, and now
+  parses with its symbols too - `1.234,56` typed in a German browser went
+  into the model as `1.234`, `1’234.56` in a Swiss one as `1`.
+- **Retry after a network error or a 502/503**: the error dialog re-sends
+  the same body, the edits it carried included (`Session.retry()`), the
+  way the UI5 frontend's error overlay does; `abap2ui5-error` carries
+  `retry`. The dialog is one at a time and goes with Escape (it stayed in
+  the overlay before).
+- **The frontend's own texts in the page's language**: message box titles
+  and buttons, "No data", "Search", "Back", the error dialog and the
+  diagnostics summary - English and German built in, `defineTexts()` adds
+  a language, the `language` attribute (or `?sap-language=` standalone)
+  overrides the page's `lang` and also sets the web components' language.
+- **`busy` and `blocked` on any control** render: a busy control sits in a
+  `ui5-busy-indicator` (`busyIndicatorDelay`, `busyIndicatorSize`), a
+  blocked one takes no input.
+- **`sap.m.Tree`** reads its items binding like every aggregation (sorter,
+  `length`, `startIndex` at the top level) and is rebuilt when its
+  structure changes - a child moved to another node of the same JSON
+  length was missed before; titles still refresh in place.
+- **Element binding of a named model** (`binding="{device>/system}"`)
+  moves that model's context only; the view model's paths stay.
+- **`<abap2ui5-app>` attributes changed at run time**: `diagnostics` and
+  `document-title` apply at once, `standalone` and `language` restart the
+  element (they were ignored), `headers` assigned after the start is used
+  from the next request on.
+- **Avatar** checks an image source the way Image does (no script URL);
+  **MessageBox** `details` is shown as sanitized formatted text, as UI5
+  does; a popup whose slot is gone before the next frame no longer opens;
+  `SET_FOCUS` with a selection on an input type without one no longer
+  throws; the busy overlay and the shell shadow take their colour from the
+  theme (the overlay was white in a dark theme).
+- **Package**: `types/index.d.ts` types the element, its events and the
+  exports; the package is no longer marked private.
+
 - **A removed or restarted `<abap2ui5-app>` drops the answer still under
   way**: the session ends with the element, and a roundtrip it overtook no
   longer renders, runs its follow-up actions - a `REDIRECT`, the URL hash

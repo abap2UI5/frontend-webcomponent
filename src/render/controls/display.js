@@ -3,7 +3,7 @@
  */
 import { define } from '../registry.js';
 import {
-  VALUE_STATE, BUTTON_DESIGN, iconName, enabled, text, icon, sanitizeHtml, isScriptUrl, cssSize,
+  VALUE_STATE, BUTTON_DESIGN, iconName, enabled, text, icon, sanitizeHtml, isScriptUrl, isImageUrl, cssSize,
 } from './common.js';
 
 const TITLE_LEVEL = { H1: 'H1', H2: 'H2', H3: 'H3', H4: 'H4', H5: 'H5', H6: 'H6', Auto: 'H2' };
@@ -138,7 +138,7 @@ define('sap.ui.core.Icon', {
 define('sap.m.Image', {
   tag: 'img',
   props: {
-    src: { set: (el, v) => (v && /^(https?:|data:image\/|\/|\.|[\w-]+[/.])/i.test(String(v)) ? el.setAttribute('src', v) : el.removeAttribute('src')) },
+    src: { set: (el, v) => (isImageUrl(v) ? el.setAttribute('src', v) : el.removeAttribute('src')) },
     alt: { attr: 'alt' },
     width: { style: 'width' },
     height: { style: 'height' },
@@ -318,7 +318,7 @@ define('sap.m.Avatar', {
       el.replaceChildren();
       if (!v) return;
       if (String(v).startsWith('sap-icon://')) el.setAttribute('icon', iconName(v));
-      else el.appendChild(api.el('img', { src: v, alt: '' }));
+      else if (isImageUrl(v)) el.appendChild(api.el('img', { src: v, alt: '' }));
     } },
     displaySize: { attr: 'size', map: { XS: 'XS', S: 'S', M: 'M', L: 'L', XL: 'XL', Custom: 'M' } },
     displayShape: { attr: 'shape', map: { Circle: 'Circle', Square: 'Square' } },

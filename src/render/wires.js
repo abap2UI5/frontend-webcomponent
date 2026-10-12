@@ -176,7 +176,8 @@ const UNKNOWN = Symbol('unknown');
 function member(obj, name) {
   if (obj === null || obj === undefined) return undefined;
   if (obj instanceof ControlProxy) {
-    if (name === 'sId' || name === 'oParent' || name in ControlProxy.prototype) return obj[name];
+    // the UI5 fields a wire reads without a call; the methods go through call()
+    if (name === 'sId' || name === 'oParent') return obj[name];
     return UNKNOWN;
   }
   if (typeof obj === 'object' && Object.prototype.hasOwnProperty.call(obj, name)) return wrap(obj[name]);

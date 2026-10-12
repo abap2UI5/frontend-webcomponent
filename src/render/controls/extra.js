@@ -3,6 +3,7 @@
  * + Token, Tree + StandardTreeItem, and the tolerated layout-data elements.
  */
 import { define } from '../registry.js';
+import { compileAggregation, aggregationRows } from '../../bindings/binding.js';
 import {
   BUTTON_DESIGN, iconName, enabled, valueState, valueStateText,
 } from './common.js';
@@ -93,7 +94,11 @@ define('sap.m.MultiInput', {
 /*
  * sap.m.Tree: the JSONModel tree binding - every array-valued property of
  * a node holds its children - rendered as nested ui5-tree-items from the
- * one item template.
+ * one item template. The items binding is read like any aggregation
+ * binding (sorter, length, startIndex apply to the top level); the tree is
+ * rebuilt when its STRUCTURE changes - the paths of its nodes, in order -
+ * while a changed title or icon refreshes in place through the item's own
+ * bindings.
  */
 define('sap.m.Tree', {
   render(node, api) {
@@ -104,40 +109,49 @@ define('sap.m.Tree', {
     if (a.mode !== undefined) api.bind(a.mode, (v) => el.setAttribute('selection-mode', { None: 'None', SingleSelect: 'Single', SingleSelectLeft: 'SingleStart', SingleSelectMaster: 'Single', MultiSelect: 'Multiple', Delete: 'Delete' }[v] || 'None'));
     if (groups.has('headerToolbar')) api.aggregation(node, 'headerToolbar', (k) => k.forEach((x) => { x.setAttribute('slot', 'header'); el.appendChild(x); }), { groups });
     const tpl = (groups.get('items') || [])[0];
-    const raw = a.items;
-    const scopeHolder = { scope: null };
-    const build = () => {
-      if (scopeHolder.scope) scopeHolder.scope.dispose();
-      scopeHolder.scope = api.ctx.scope.child();
-      for (const old of [...el.querySelectorAll(':scope > ui5-tree-item')]) old.remove();
-      if (!tpl) return;
-      if (raw === undefined) {
-        for (const ch of groups.get('items')) { const x = api.child(ch); if (x) el.appendChild(x); }
-        return;
-      }
-      const m = /\{\s*(?:path\s*:\s*['"])?([^'",}]+)/.exec(raw);
-      const path = m ? m[1].trim() : '';
-      const model = api.ctx.models[''];
-      const abs = path.startsWith('/') ? path : `${api.ctx.path}/${path}`;
-      const renderLevel = (base, parent) => {
-        const data = model.get(base);
-        const entries = Array.isArray(data) ? data.map((v, i) => [i, v]) : (data && typeof data === 'object' ? Object.entries(data) : []);
-        for (const [k, v] of entries) {
-          if (!v || typeof v !== 'object') continue;
-          const p = `${base}/${k}`;
-          const item = api.child(tpl, { ...api.ctx, path: p, scope: scopeHolder.scope, inTemplate: true });
-          if (!item) continue;
-          parent.appendChild(item);
-          for (const [ck, cv] of Object.entries(v)) if (Array.isArray(cv) && cv.length) renderLevel(`${p}/${ck}`, item);
-        }
+    const agg = a.items !== undefined ? compileAggregation(a.items) : null;
+    if (agg && agg.unsupported) api.report('binding', `sap.m.Tree.items: ${agg.unsupported}`);
+    for (const issue of (agg && agg.issues) || []) api.report(issue.kind, issue.detail);
+    if (!agg || agg.unsupported) {
+      // static items
+      api.aggregation(node, 'items', (kids) => kids.forEach((k) => el.appendChild(k)), { groups });
+    } else if (tpl) {
+      let scope = null;
+      let signature = null;
+      // the nodes of a level: [path, value] of every object entry, children first-level only
+      const childrenOf = (value) => Object.entries(value).filter(([, v]) => Array.isArray(v) && v.length);
+      const structure = (rows, model) => {
+        const out = [];
+        const walk = (path, value) => {
+          if (!value || typeof value !== 'object') return;
+          out.push(path);
+          for (const [k, arr] of childrenOf(value)) arr.forEach((v, i) => walk(`${path}/${k}/${i}`, v));
+        };
+        for (const row of rows) walk(row.path, model.get(row.path));
+        return out;
       };
-      renderLevel(abs, el);
-    };
-    build();
-    if (raw !== undefined) api.ctx.scope.add(api.ctx.models[''].subscribe(() => {
-      const sig = JSON.stringify(api.ctx.models[''].get((/\{\s*(?:path\s*:\s*['"])?([^'",}]+)/.exec(raw) || [])[1] || '/')).length;
-      if (sig !== scopeHolder.sig) { scopeHolder.sig = sig; build(); }
-    }));
+      const build = () => {
+        const { model, rows } = aggregationRows(agg, api.ctx);
+        if (!model) return;
+        const sig = structure(rows, model).join('|');
+        if (sig === signature) return;
+        signature = sig;
+        if (scope) scope.dispose();
+        scope = api.ctx.scope.child();
+        for (const old of [...el.querySelectorAll(':scope > ui5-tree-item')]) old.remove();
+        const renderNode = (path, parent) => {
+          const value = model.get(path);
+          if (!value || typeof value !== 'object') return;
+          const item = api.child(tpl, { ...api.ctx, path, scope, inTemplate: true });
+          if (!item) return;
+          parent.appendChild(item);
+          for (const [k, arr] of childrenOf(value)) arr.forEach((v, i) => renderNode(`${path}/${k}/${i}`, item));
+        };
+        for (const row of rows) renderNode(row.path, el);
+      };
+      build();
+      for (const m of Object.values(api.ctx.models)) if (m && m.subscribe) api.ctx.scope.add(m.subscribe(build));
+    }
     if (a.toggleOpenState) api.wire(el, 'toggleOpenState', { on: 'item-toggle', params: (ev) => ({ itemContext: null, expanded: ev.detail && ev.detail.item ? !ev.detail.item.expanded : false }) });
     if (a.itemPress) api.wire(el, 'itemPress', { on: 'item-click', params: (ev) => ({ listItem: ev.detail && ev.detail.item }) });
     if (a.selectionChange) api.wire(el, 'selectionChange', { on: 'selection-change', params: (ev) => ({ listItem: ev.detail && ev.detail.selectedItems && ev.detail.selectedItems[0] }) });
@@ -145,7 +159,7 @@ define('sap.m.Tree', {
   },
   defaultAggregation: 'items',
   status: 'basic',
-  note: 'nested array binding, headerText, mode, headerToolbar, toggleOpenState/itemPress/selectionChange',
+  note: 'nested array binding (sorter, length, startIndex at the top level), headerText, mode, headerToolbar, toggleOpenState/itemPress/selectionChange',
 });
 
 define('sap.m.StandardTreeItem', {
