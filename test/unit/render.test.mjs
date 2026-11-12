@@ -397,3 +397,46 @@ test('the error dialog: Retry for a retryable error, one dialog at a time, gone 
   app.destroy();
   root.remove();
 });
+
+test('wire argument chains: \\n \\t \\r in string literals are control characters', () => {
+  const { render, events } = setup({});
+  const { host } = render(viewOf(`<Button text="b" press=".eB(['P'], \${$source>/text} ? 'a\\nb\\tc' : '', 'q\\'x'.toUpperCase())"/>`));
+  host.querySelector('ui5-button').dispatchEvent(new CustomEvent('click'));
+  assert.deepEqual(events[0].args, ['a\nb\tc', "Q'X"]);
+});
+
+test('MultiComboBox selectionChange: changedItem and selected from the diff, not the full list', () => {
+  const { render, events, models } = setup({ K: ['A'] });
+  const { host } = render(viewOf(`<MultiComboBox selectedKeys="{/K}" selectionChange=".eB(['SC'], \${$parameters>/selected})">
+    <core:Item key="A" text="a"/><core:Item key="B" text="b"/><core:Item key="C" text="c"/></MultiComboBox>`));
+  const mcb = host.querySelector('ui5-multi-combobox');
+  const [a, b, c] = mcb.querySelectorAll('ui5-mcb-item');
+  assert.deepEqual([a.selected, b.selected, c.selected], [true, false, false]);
+  const fire = () => mcb.dispatchEvent(new CustomEvent('selection-change', { detail: { items: [a, b, c].filter((o) => o.selected) } }));
+  c.selected = true;
+  fire();
+  assert.deepEqual(models[''].data.K, ['A', 'C']);
+  assert.equal(mcb.__a2uChange.changedItem, c);
+  assert.equal(events.at(-1).args[0], true);
+  a.selected = false;
+  fire();
+  assert.deepEqual(models[''].data.K, ['C']);
+  assert.equal(mcb.__a2uChange.changedItem, a, 'the deselected item, not detail.items[0]');
+  assert.equal(events.at(-1).args[0], false);
+});
+
+test('a nested slot with methodDestroy replaces the one in the parent itself, not in a page nested deeper', async () => {
+  const { FrontendApp } = await import('../../src/ui/app.js');
+  const root = document.createElement('div');
+  document.body.appendChild(root);
+  const app = new FrontendApp({ root, host: root, endpoint: '/sap/bc/z2ui5', transport: { roundtrip: async () => ({ ok: true, status: 200, body: '{}' }), endSession() {} } });
+  app.renderSlot('MAIN', { xml: viewOf('<VBox id="box"><Page title="inner"><Text text="x"/></Page></VBox>') });
+  app.renderSlot('NEST', { xml: viewOf('<Text text="first"/>'), options: { id: 'box' } });
+  const box = app.findById('box', ['MAIN']);
+  assert.equal(box.querySelectorAll(':scope > .a2u-nested').length, 1);
+  app.renderSlot('NEST2', { xml: viewOf('<Text text="second"/>'), options: { id: 'box', methodDestroy: true } });
+  assert.deepEqual([...box.querySelectorAll(':scope > .a2u-nested')].map((n) => n.getAttribute('data-slot')), ['NEST2']);
+  assert.equal(app.slots.NEST, undefined, 'the old nested slot is gone as a slot');
+  app.destroy();
+  root.remove();
+});

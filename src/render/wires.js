@@ -137,7 +137,7 @@ function tokenize(src) {
       let v = '';
       while (j < s.length && s[j] !== c) {
         if (s[j] === '\\') {
-          v += s[j + 1];
+          v += { n: '\n', t: '\t', r: '\r' }[s[j + 1]] ?? s[j + 1];
           j += 2;
           continue;
         }
