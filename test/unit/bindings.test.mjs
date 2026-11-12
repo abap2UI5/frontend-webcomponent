@@ -144,3 +144,31 @@ test('typed numbers round-trip in the locale they are shown in', async () => {
   assert.equal(parseValue('', T, {}, 'de-DE'), 0);
   assert.equal(normalizeNumberText('1 234,5', 'fr-FR'), '1234.5');
 });
+
+test('compact number styles: short and long differ, the fraction is rounded', () => {
+  const T = 'sap.ui.model.type.Float';
+  assert.equal(formatValue(1234567, T, { style: 'short' }, 'en-US'), '1.2M');
+  assert.equal(formatValue(1234567, T, { style: 'long' }, 'en-US'), '1.2 million');
+  assert.equal(formatValue(1234567, T, { style: 'short', decimals: 3 }, 'en-US'), '1.235M');
+  assert.equal(formatValue(1234567, 'sap.ui.model.type.Integer', { style: 'long' }, 'en-US'), '1.2 million');
+});
+
+test('date patterns: yy windows into the current century, a reads AM/PM for h', () => {
+  const now = new Date().getFullYear();
+  const y25 = parseDatePattern('01.02.25', 'dd.MM.yy').getFullYear();
+  assert.equal(y25 % 100, 25);
+  assert.ok(Math.abs(y25 - now) <= 50, `yy=25 -> ${y25}`);
+  assert.ok(Math.abs(parseDatePattern('01.02.99', 'dd.MM.yy').getFullYear() - now) <= 50);
+  assert.equal(parseDatePattern('01.02.2025', 'dd.MM.yy').getFullYear(), 2025, 'four digits stay as written');
+  assert.equal(parseDatePattern('03:15 PM', 'hh:mm a').getHours(), 15);
+  assert.equal(parseDatePattern('12:15 AM', 'hh:mm a').getHours(), 0);
+  assert.equal(parseDatePattern('12:15 PM', 'hh:mm a').getHours(), 12);
+  assert.equal(parseDatePattern('9:05 am', 'h:mm a').getHours(), 9);
+  const d = new Date(2026, 9, 3, 21, 7);
+  assert.equal(parseDatePattern(formatDatePattern(d, 'hh:mm a'), 'hh:mm a').getHours(), 21);
+});
+
+test('expression string literals: \\n \\t \\r are control characters, other escapes the character', () => {
+  const v = evaluate(compileExpression("'a\\nb\\tc\\rd\\'e\\\\f'"), () => undefined);
+  assert.equal(v, "a\nb\tc\rd'e\\f");
+});

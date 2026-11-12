@@ -154,6 +154,11 @@ export class Router {
       // it, a Back over one lowers it, a Forward raises it again - what
       // back() reads in place of UI5's History.getPreviousHash()
       pushCount: 0,
+      // the app hash as the router knows it: the page's at start, its own
+      // write()s and the hash changes it was told of - NOT the legacy suffix
+      // writeSuffix() appends (hasher's cached hash in the UI5 frontend,
+      // which a history.pushState bypasses the same way)
+      knownHash: appHashOf(url.get()),
     };
     // the app hashes this router wrote or saw, in history order, and the
     // position the browser stands on - which way a hash change went (the
@@ -238,6 +243,7 @@ export class Router {
     const raw = shell ? (app ? `${shell}&/${app.replace(/^\/+/, '')}` : shell) : app;
     if (push) this.state.pushCount += 1;
     this.trailWrite(raw, !push);
+    this.state.knownHash = appHashOf(raw);
     this.url.write(raw, push);
   }
 
@@ -301,8 +307,12 @@ export class Router {
       }
       // an app-owned hash listener owns the whole hash: no upkeep
       if (state.hashEvent) return;
+      // compared with the hash the router knows, not the URL: a suffix the
+      // app wrote with hash_set (writeSuffix) stays until the app or the
+      // user changes it - the next unrelated roundtrip must not wipe it
+      // (the UI5 frontend's replaceHash('') is a no-op there, too)
       const next = o.setAppStateActive ? `/z2ui5-xapp-state=${id || ''}` : '';
-      if (appHashOf(this.url.get()) !== next) this.write(next, false);
+      if (state.knownHash !== next) this.write(next, false);
     } catch (e) {
       this.report({ kind: 'router', detail: `hash update failed: ${e.message}` });
     }
@@ -359,6 +369,7 @@ export class Router {
     // - counting pushes only, a cold deep link that pushed once and went
     // Back called history.back( ) on the next HASH_BACK and left the page,
     // the case its fallback exists for. The echoes of writes move nothing.
+    state.knownHash = appHashOf(raw);
     const direction = this.trailMove(raw);
     if (direction === 'back') state.pushCount = Math.max(0, state.pushCount - 1);
     else if (direction === 'forward') state.pushCount += 1;

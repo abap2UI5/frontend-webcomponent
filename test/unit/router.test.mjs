@@ -167,6 +167,21 @@ test('a hash_set suffix without a listener is appended to the hash the page has'
   assert.deepEqual(win.entries, ['', '&my-state=x']);
 });
 
+test('a hash_set suffix without a listener survives the next unrelated roundtrip', () => {
+  const { win, router } = setup();
+  router.sync({ setPushState: '/my-state=x' }, { id: 'D1', app: 'Z_A' });
+  router.sync({}, { id: 'D2', app: 'Z_A' });
+  assert.equal(win.location.hash, '#/my-state=x');
+  router.sync({ setHashReplace: '&y' }, { id: 'D3', app: 'Z_A' });
+  router.sync({}, { id: 'D4', app: 'Z_A' });
+  assert.equal(win.location.hash, '#/my-state=x&y');
+  // the app-state hash the router wrote is still cleared
+  router.sync({ setAppStateActive: true }, { id: 'D5', app: 'Z_A' });
+  assert.equal(win.location.hash, '#/z2ui5-xapp-state=D5');
+  router.sync({}, { id: 'D6', app: 'Z_A' });
+  assert.equal(win.location.hash, '');
+});
+
 test('inside the launchpad the shell part of the hash survives every write', () => {
   const { win, router } = setup(fakeWindow('Shell-display&/app/Z_A/D0'));
   router.sync({ setNavRouting: 'KEEP' }, { id: 'D1', app: 'Z_A' });

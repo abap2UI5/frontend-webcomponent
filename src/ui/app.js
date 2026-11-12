@@ -244,16 +244,18 @@ export class FrontendApp {
         this.report({ kind: 'slot', detail: `${slot}: parent control '${options && options.id}' not found` });
         return;
       }
+      // the parent's own content holder (a Page's), never one of a page nested in it
+      const container = parent.querySelector(':scope > .a2u-page-content') || parent;
       if (options && options.methodDestroy) {
         // the parent's content is destroyed first: the other nested slot
         // in it goes as a slot (its bindings with it), not as a node
-        for (const old of (parent.querySelector('.a2u-page-content') || parent).querySelectorAll(':scope > .a2u-nested')) {
+        for (const old of container.querySelectorAll(':scope > .a2u-nested')) {
           const other = old.getAttribute('data-slot');
           if (this.slots[other] && this.slots[other].holder === old) this.removeSlot(other);
           else old.remove();
         }
       }
-      (parent.querySelector(':scope > .a2u-page-content') || parent).appendChild(holder);
+      container.appendChild(holder);
     } else {
       this.openPopup(slot, entry, options || {});
     }

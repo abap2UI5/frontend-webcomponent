@@ -58,19 +58,41 @@ export function formatDatePattern(date, pattern, locale) {
   }).join('');
 }
 
+/*
+ * A two-digit year (`yy`): UI5 uses a sliding window; here the simpler
+ * fixed window of 50 years either side of the current year
+ * (in 2026: 77 -> 1977, 76 -> 2076, 25 -> 2025).
+ */
+const windowYear = (yy, now = new Date().getFullYear()) => {
+  let y = Math.floor(now / 100) * 100 + yy;
+  if (y > now + 50) y -= 100;
+  else if (y <= now - 50) y += 100;
+  return y;
+};
+
 /** A date string in a source pattern -> Date (local time), or null. */
 export function parseDatePattern(text, pattern) {
   const s = String(text ?? '');
   if (!s) return null;
-  const tokens = String(pattern).match(/'[^']*'|y+|M+|d+|H+|h+|m+|s+|S+|[^'yMdHhmsS]+/g) || [];
+  const tokens = String(pattern).match(/'[^']*'|y+|M+|d+|H+|h+|m+|s+|a+|S+|[^'yMdHhmsaS]+/g) || [];
   let i = 0;
   const parts = { y: 1970, M: 1, d: 1, H: 0, m: 0, s: 0, S: 0 };
+  let twelveHour = false;
+  let pm = null;
   for (const t of tokens) {
     if (t[0] === "'") {
       i += t.length - 2;
       continue;
     }
     const k = t[0];
+    if (k === 'a') {
+      const ap = /^\s*([AaPp])\.?\s*[Mm]?\.?/.exec(s.slice(i));
+      if (!ap) return null;
+      pm = ap[1].toUpperCase() === 'P';
+      i += ap[0].length;
+      continue;
+    }
+    if (k === 'h') twelveHour = true;
     if (!'yMdHhmsS'.includes(k)) {
       i += t.length;
       continue;
@@ -78,9 +100,10 @@ export function parseDatePattern(text, pattern) {
     const width = t.length >= 2 || k === 'y' ? (k === 'y' && t.length < 4 ? 4 : t.length) : null;
     const m = width ? new RegExp(`^\\d{1,${width}}`).exec(s.slice(i)) : /^\d+/.exec(s.slice(i));
     if (!m) return null;
-    parts[k === 'h' ? 'H' : k] = Number(m[0]);
+    parts[k === 'h' ? 'H' : k] = k === 'y' && t.length === 2 && m[0].length === 2 ? windowYear(Number(m[0])) : Number(m[0]);
     i += m[0].length;
   }
+  if (twelveHour && pm !== null) parts.H = (parts.H % 12) + (pm ? 12 : 0);
   const d = new Date(parts.y, parts.M - 1, parts.d, parts.H, parts.m, parts.s, parts.S);
   return Number.isNaN(d.getTime()) ? null : d;
 }
@@ -110,7 +133,19 @@ function formatNumber(value, typeShort, o = {}, locale) {
   const n = typeof value === 'number' ? value : Number(String(value).trim());
   if (Number.isNaN(n)) return String(value);
   const opts = { useGrouping: o.groupingEnabled !== false };
-  if (INTEGER_TYPES.has(typeShort)) {
+  const compact = o.style === 'short' || o.style === 'long';
+  if (compact) {
+    // UI5's short/long style: 1234567 -> "1.2M" / "1.2 million". Without
+    // decimals the fraction is left to Intl's compact rounding (two
+    // significant digits below 100 of the unit), as UI5 does it.
+    opts.notation = 'compact';
+    opts.compactDisplay = o.style === 'long' ? 'long' : 'short';
+    const dec = o.decimals ?? o.maxFractionDigits;
+    if (dec !== undefined) {
+      opts.minimumFractionDigits = o.decimals ?? o.minFractionDigits ?? 0;
+      opts.maximumFractionDigits = Math.max(dec, opts.minimumFractionDigits);
+    }
+  } else if (INTEGER_TYPES.has(typeShort)) {
     opts.maximumFractionDigits = 0;
   } else {
     const dec = o.decimals ?? o.maxFractionDigits;
@@ -119,7 +154,6 @@ function formatNumber(value, typeShort, o = {}, locale) {
     if (dec !== undefined) opts.maximumFractionDigits = Math.max(dec, opts.minimumFractionDigits || 0);
     else opts.maximumFractionDigits = 20;
   }
-  if (o.style === 'short' || o.style === 'long') opts.notation = 'compact';
   return new Intl.NumberFormat(locale, opts).format(n);
 }
 

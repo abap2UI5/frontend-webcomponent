@@ -315,8 +315,25 @@ define('sap.m.MultiComboBox', {
     const sync = () => { for (const o of items()) o.selected = keys.includes(o.dataset.key); };
     el.__a2uSync = sync;
     choiceItems(el, node, api, 'mcb', sync);
+    /*
+     * selection-change carries the full selected list (detail.items), not
+     * the toggled item: diff it against the keys selected before the event
+     * to get UI5's changedItem / selected. Capture phase, registered before
+     * the two-way write and the wires, so both see the diff.
+     */
+    let prevSelected = null;
+    el.addEventListener('selection-change', () => {
+      const all = items();
+      const before = new Set(prevSelected ?? keys);
+      const now = all.filter((o) => o.selected).map((o) => o.dataset.key);
+      const nowSet = new Set(now);
+      const added = all.find((o) => nowSet.has(o.dataset.key) && !before.has(o.dataset.key));
+      const removed = added ? null : all.find((o) => before.has(o.dataset.key) && !nowSet.has(o.dataset.key));
+      el.__a2uChange = { changedItem: added || removed || null, selected: !!added };
+      prevSelected = now;
+    }, true);
     api.prop(el, 'selectedKeys', {
-      set: (e, v) => { keys = Array.isArray(v) ? v.map(str) : (v ? String(v).split(',') : []); sync(); },
+      set: (e, v) => { keys = Array.isArray(v) ? v.map(str) : (v ? String(v).split(',') : []); prevSelected = null; sync(); },
       twoWay: { event: 'selection-change', read: () => items().filter((o) => o.selected).map((o) => o.dataset.key) },
     });
     api.renderer.applyAttributes(el, this, node, api, { skip: ['selectedKeys'] });
@@ -334,7 +351,7 @@ define('sap.m.MultiComboBox', {
     showClearIcon: { attr: 'show-clear-icon', bool: true },
   },
   events: {
-    selectionChange: { on: 'selection-change', params: (ev) => ({ changedItem: ev.detail && ev.detail.items && ev.detail.items[0], selected: true }) },
+    selectionChange: { on: 'selection-change', params: (ev, el) => ({ ...(el.__a2uChange || { changedItem: null, selected: false }) }) },
     selectionFinish: { on: 'close', params: (ev, el) => ({ selectedItems: [...el.children].filter((o) => o.selected) }) },
   },
   aggregations: { items: 'ignore' },
